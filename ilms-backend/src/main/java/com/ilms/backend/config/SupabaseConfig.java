@@ -1,6 +1,7 @@
 package com.ilms.backend.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
@@ -16,11 +17,8 @@ import java.util.Map;
 import com.zaxxer.hikari.HikariDataSource;
 
 @Configuration
-@EnableJpaRepositories(
-    basePackages = "com.ilms.backend.supabase.repository",
-    entityManagerFactoryRef = "supabaseEntityManagerFactory",
-    transactionManagerRef = "supabaseTransactionManager"
-)
+@ConditionalOnProperty(name = "supabase.sync.enabled", havingValue = "true")
+@EnableJpaRepositories(basePackages = "com.ilms.backend.supabase.repository", entityManagerFactoryRef = "supabaseEntityManagerFactory", transactionManagerRef = "supabaseTransactionManager")
 public class SupabaseConfig {
 
     @Value("${supabase.db.url:jdbc:postgresql://localhost:5432/postgres}")

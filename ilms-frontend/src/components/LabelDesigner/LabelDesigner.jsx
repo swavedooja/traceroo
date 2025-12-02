@@ -5,6 +5,18 @@ import { useNavigate, useParams } from 'react-router-dom';
 import DesignerCanvas from './DesignerCanvas';
 import { LabelTemplateAPI } from '../../services/APIService';
 
+const DYNAMIC_FIELDS = [
+    { label: 'Material Code', value: 'materialCode' },
+    { label: 'Material Name', value: 'materialName' },
+    { label: 'Description', value: 'description' },
+    { label: 'Batch Number', value: 'batchNumber' },
+    { label: 'Serial Number', value: 'serialNumber' },
+    { label: 'Expiry Date', value: 'expiryDate' },
+    { label: 'Manufacturing Date', value: 'mfgDate' },
+    { label: 'Net Weight', value: 'netWeight' },
+    { label: 'Gross Weight', value: 'grossWeight' },
+];
+
 export default function LabelDesigner() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -41,6 +53,8 @@ export default function LabelDesigner() {
             x: 10,
             y: 10,
             content: type === 'text' ? 'Sample Text' : '',
+            contentType: 'STATIC', // STATIC or DYNAMIC
+            dynamicField: '',
             fontSize: 14,
             fontWeight: 'normal'
         };
@@ -119,11 +133,47 @@ export default function LabelDesigner() {
                             <>
                                 <Divider sx={{ my: 2 }} />
                                 <Typography variant="subtitle2" sx={{ mb: 1 }}>Selected Element</Typography>
+
+                                <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                                    <InputLabel>Content Type</InputLabel>
+                                    <Select
+                                        value={selectedElement.contentType || 'STATIC'}
+                                        label="Content Type"
+                                        onChange={e => updateSelected('contentType', e.target.value)}
+                                    >
+                                        <MenuItem value="STATIC">Static Text</MenuItem>
+                                        <MenuItem value="DYNAMIC">Dynamic Field</MenuItem>
+                                    </Select>
+                                </FormControl>
+
+                                {selectedElement.contentType === 'DYNAMIC' ? (
+                                    <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                                        <InputLabel>Field</InputLabel>
+                                        <Select
+                                            value={selectedElement.dynamicField || ''}
+                                            label="Field"
+                                            onChange={e => updateSelected('dynamicField', e.target.value)}
+                                        >
+                                            {DYNAMIC_FIELDS.map(field => (
+                                                <MenuItem key={field.value} value={field.value}>
+                                                    {field.label}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                ) : (
+                                    <TextField
+                                        fullWidth
+                                        size="small"
+                                        label="Content"
+                                        value={selectedElement.content}
+                                        onChange={e => updateSelected('content', e.target.value)}
+                                        sx={{ mb: 2 }}
+                                    />
+                                )}
+
                                 {selectedElement.type === 'text' && (
-                                    <>
-                                        <TextField fullWidth size="small" label="Content" value={selectedElement.content} onChange={e => updateSelected('content', e.target.value)} sx={{ mb: 1 }} />
-                                        <TextField fullWidth size="small" label="Font Size" type="number" value={selectedElement.fontSize} onChange={e => updateSelected('fontSize', Number(e.target.value))} sx={{ mb: 1 }} />
-                                    </>
+                                    <TextField fullWidth size="small" label="Font Size" type="number" value={selectedElement.fontSize} onChange={e => updateSelected('fontSize', Number(e.target.value))} sx={{ mb: 1 }} />
                                 )}
                             </>
                         )}

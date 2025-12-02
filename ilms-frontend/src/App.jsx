@@ -43,7 +43,6 @@ import {
   Notifications,
   Settings,
   Logout,
-  Logout,
   LocalShipping,
   Store,
   Style,

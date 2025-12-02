@@ -66,17 +66,17 @@ export default function DesignerCanvas({ width, height, elements, setElements, s
                         >
                             {el.type === 'text' && (
                                 <Typography sx={{ fontSize: el.fontSize, fontWeight: el.fontWeight }}>
-                                    {el.content}
+                                    {el.contentType === 'DYNAMIC' ? `{${el.dynamicField}}` : el.content}
                                 </Typography>
                             )}
                             {el.type === 'barcode' && (
                                 <Box sx={{ width: 100, height: 40, bgcolor: '#000', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
-                                    BARCODE
+                                    {el.contentType === 'DYNAMIC' ? `{${el.dynamicField}}` : 'BARCODE'}
                                 </Box>
                             )}
                             {el.type === 'qr' && (
                                 <Box sx={{ width: 50, height: 50, bgcolor: '#000', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8 }}>
-                                    QR
+                                    {el.contentType === 'DYNAMIC' ? `{${el.dynamicField}}` : 'QR'}
                                 </Box>
                             )}
 
