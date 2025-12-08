@@ -49,6 +49,7 @@ export default function LabelDesigner({ propTemplateId, onSaveSuccess, onClose }
     const [selectedId, setSelectedId] = useState(null);
     const [tabValue, setTabValue] = useState(0);
     const [previewOpen, setPreviewOpen] = useState(false);
+    const [paperSize, setPaperSize] = useState('A4');
 
     useEffect(() => {
         if (id) {
@@ -196,8 +197,8 @@ export default function LabelDesigner({ propTemplateId, onSaveSuccess, onClose }
             </Paper>
 
             <Grid container sx={{ flex: 1, overflow: 'hidden' }}>
-                {/* Left Sidebar: Assets */}
-                <Grid item xs={2} sx={{ borderRight: '1px solid #ddd', bgcolor: '#fafafa', display: 'flex', flexDirection: 'column' }}>
+                {/* Left Sidebar: Assets - Hidden on Mobile */}
+                <Grid item xs={12} md={2} sx={{ borderRight: { md: '1px solid #ddd' }, bgcolor: '#fafafa', display: { xs: 'none', md: 'flex' }, flexDirection: 'column' }}>
                     <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} variant="fullWidth">
                         <Tab label="Add" />
                         <Tab label="Layers" />
@@ -244,7 +245,7 @@ export default function LabelDesigner({ propTemplateId, onSaveSuccess, onClose }
                 </Grid>
 
                 {/* Center: Canvas */}
-                <Grid item xs={7} sx={{ bgcolor: '#eee', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto', p: 4 }}>
+                <Grid item xs={12} md={7} sx={{ bgcolor: '#eee', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto', p: { xs: 1, md: 4 } }}>
                     <DesignerCanvas
                         width={template.widthMm * 3.78}
                         height={template.heightMm * 3.78}
@@ -255,8 +256,8 @@ export default function LabelDesigner({ propTemplateId, onSaveSuccess, onClose }
                     />
                 </Grid>
 
-                {/* Right Sidebar: Properties */}
-                <Grid item xs={3} sx={{ borderLeft: '1px solid #ddd', bgcolor: 'white', display: 'flex', flexDirection: 'column' }}>
+                {/* Right Sidebar: Properties - Hidden on Mobile */}
+                <Grid item xs={12} md={3} sx={{ borderLeft: { md: '1px solid #ddd' }, bgcolor: 'white', display: { xs: 'none', md: 'flex' }, flexDirection: 'column' }}>
                     <Box sx={{ p: 2, borderBottom: '1px solid #eee' }}>
                         <Typography variant="subtitle2" fontWeight="bold">Properties</Typography>
                     </Box>
@@ -348,15 +349,73 @@ export default function LabelDesigner({ propTemplateId, onSaveSuccess, onClose }
                     </Box>
                 </Grid>
             </Grid>
-            <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="md">
-                <DialogTitle>Label Preview</DialogTitle>
-                <DialogContent sx={{ bgcolor: '#eee', display: 'flex', justifyContent: 'center', p: 4 }}>
-                    <LabelPreview
-                        width={template.widthMm * 3.78}
-                        height={template.heightMm * 3.78}
-                        elements={elements}
-                        data={DUMMY_DATA}
-                    />
+            <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
+                <DialogTitle>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        Label Sheet Preview
+                        <FormControl size="small" sx={{ width: 200 }}>
+                            <InputLabel>Paper Size</InputLabel>
+                            <Select
+                                value={paperSize}
+                                label="Paper Size"
+                                onChange={(e) => setPaperSize(e.target.value)}
+                            >
+                                <MenuItem value="A4">A4 (210 x 297 mm)</MenuItem>
+                                <MenuItem value="Letter">Letter (215.9 x 279.4 mm)</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Box>
+                </DialogTitle>
+                <DialogContent sx={{ bgcolor: '#eee', display: 'flex', justifyContent: 'center', p: 4, overflow: 'auto' }}>
+                    {/* Imposition Logic */}
+                    {(() => {
+                        const paperDims = paperSize === 'A4' ? { w: 210, h: 297 } : { w: 215.9, h: 279.4 };
+                        // 3.78 px per mm approx for screen view, but let's just use CSS scale or relative sizing
+                        const pxPerMm = 3.78;
+                        const sheetW = paperDims.w * pxPerMm;
+                        const sheetH = paperDims.h * pxPerMm;
+                        const labelW = template.widthMm * pxPerMm;
+                        const labelH = template.heightMm * pxPerMm;
+
+                        const cols = Math.floor(paperDims.w / template.widthMm);
+                        const rows = Math.floor(paperDims.h / template.heightMm);
+                        const totalLabels = cols * rows;
+
+                        return (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                <Typography variant="body2">
+                                    Fits <b>{totalLabels}</b> labels ({cols} x {rows}) on {paperSize}.
+                                </Typography>
+                                <Box
+                                    id="sheet-preview"
+                                    sx={{
+                                        width: sheetW,
+                                        height: sheetH,
+                                        bgcolor: 'white',
+                                        boxShadow: 3,
+                                        display: 'grid',
+                                        gridTemplateColumns: `repeat(${cols}, ${labelW}px)`,
+                                        gridTemplateRows: `repeat(${rows}, ${labelH}px)`,
+                                        // gap: '1px', // Optional cutting lines
+                                        border: '1px solid #ccc'
+                                    }}
+                                >
+                                    {Array.from({ length: totalLabels }).map((_, i) => (
+                                        <Box key={i} sx={{ border: '1px dashed #eee', overflow: 'hidden' }}>
+                                            {/* Scaled down content if needed, but here exact size */}
+                                            <LabelPreview
+                                                width={labelW}
+                                                height={labelH}
+                                                elements={elements}
+                                                data={DUMMY_DATA}
+                                                scale={1} // Assuming LabelPreview handles scale or is purely px based
+                                            />
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Box>
+                        );
+                    })()}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setPreviewOpen(false)}>Close</Button>

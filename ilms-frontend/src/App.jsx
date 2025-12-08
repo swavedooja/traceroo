@@ -217,7 +217,7 @@ export default function App() {
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <GlobalStyles styles={{ body: { scrollBehavior: 'smooth' } }} />
       <NavBar onLogout={() => setIsAuthenticated(false)} />
-      <Container maxWidth="xl" sx={{ mt: 3, mb: 6, flex: 1, display: 'flex', flexDirection: 'column', pl: { xs: 2, sm: 10 } }}>
+      <Container maxWidth="xl" sx={{ mt: { xs: 2, sm: 3 }, mb: { xs: 3, sm: 6 }, flex: 1, display: 'flex', flexDirection: 'column', px: { xs: 1, sm: 2, md: 3 } }}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/materials/new" element={<MaterialCreate />} />

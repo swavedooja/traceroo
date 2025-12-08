@@ -1,79 +1,90 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Button, Paper, Typography, Stepper, Step, StepLabel, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, LinearProgress, Alert } from '@mui/material';
-import { CloudDownload, CloudUpload, Print, ArrowBack } from '@mui/icons-material';
-import { PackagingAPI, LabelTemplateAPI } from '../../../services/APIService';
+import {
+    Box, Button, Paper, Typography, Stepper, Step, StepLabel,
+    Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+    TextField, Chip, Tabs, Tab, Dialog, DialogTitle, DialogContent, DialogActions,
+    Alert, LinearProgress, FormControl, InputLabel, Select, MenuItem
+} from '@mui/material';
+import { ArrowBack, CloudUpload, Print, Calculate, CheckCircle, Error as ErrorIcon, Preview } from '@mui/icons-material';
+import { PackagingAPI } from '../../../services/APIService';
+import LabelPreview from '../../LabelPreview';
+
+// Dummy data for preview
+const DUMMY_DATA = {
+    materialCode: 'MAT-12345678',
+    materialName: 'Premium Shampoo 500ml',
+    batchNumber: 'B-2023-10-001',
+    serialNumber: 'SN-9988776655',
+    expiryDate: '2025-12-31',
+    mfgDate: '2023-10-01',
+    netWeight: '500g',
+};
 
 export default function PrintStation() {
     const { hierarchyId } = useParams();
     const navigate = useNavigate();
+
+    // Stepper
     const [activeStep, setActiveStep] = useState(0);
-    const [hierarchy, setHierarchy] = useState(null);
+    const steps = ['Plan Quantities', 'Upload Data', 'Preview & Print'];
+
+    // Data
     const [levels, setLevels] = useState([]);
-    const [csvData, setCsvData] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [headers, setHeaders] = useState([]);
+
+    // Step 1: Quantity
+    const [totalItems, setTotalItems] = useState('');
+    const [calculatedCounts, setCalculatedCounts] = useState({}); // { levelId: count }
+
+    // Step 2: Uploads
+    const [uploadedData, setUploadedData] = useState({}); // { levelId: { headers: [], rows: [] } }
+
+    // Step 3: Preview
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewLevel, setPreviewLevel] = useState(null);
+    const [paperSize, setPaperSize] = useState('A4');
 
     useEffect(() => {
-        if (hierarchyId) loadData();
+        if (hierarchyId) loadLevels();
     }, [hierarchyId]);
 
-    const loadData = async () => {
+    const loadLevels = async () => {
         setLoading(true);
         try {
-            // we don't have getHierarchy API yet that returns single, but we can reuse list or add one.
-            // For now assuming we can fetch levels which contain template info
-            const lvls = await PackagingAPI.getLevels(hierarchyId);
-            setLevels(lvls);
-            // Derive hierarchy name or fetch it (optional, for display)
-            // Ideally we should have PackagingAPI.getHierarchy(id)
-        } catch (e) { console.error(e); }
+            const data = await PackagingAPI.getLevels(hierarchyId);
+            // Sort by level_order ascending (lowest = innermost = items)
+            const sorted = data.sort((a, b) => a.level_order - b.level_order);
+            setLevels(sorted);
+        } catch (e) {
+            console.error(e);
+        }
         setLoading(false);
     };
 
-    const generateCSVTemplate = () => {
-        // Collect all unique fields from all templates
-        const uniqueFields = new Set(['Material Code', 'Batch No', 'Qty']);
+    // Step 1: Calculate counts based on capacity
+    const handleCalculate = () => {
+        if (!totalItems || isNaN(parseInt(totalItems))) return;
 
-        levels.forEach(l => {
-            if (l.label_template && l.label_template.canvas_design) {
-                const design = typeof l.label_template.canvas_design === 'string'
-                    ? JSON.parse(l.label_template.canvas_design)
-                    : l.label_template.canvas_design;
+        const counts = {};
+        let currentCount = parseInt(totalItems);
 
-                design.forEach(el => {
-                    const matches = el.formatString?.match(/\{([^}]+)\}/g);
-                    if (matches) {
-                        matches.forEach(m => uniqueFields.add(m.replace(/[{}]/g, '')));
-                    }
-                });
+        levels.forEach((level, index) => {
+            counts[level.id] = currentCount;
+            // For next level, divide by current level's capacity
+            const capacity = level.capacity || 10; // Default 10 if not set
+            if (index < levels.length - 1) {
+                currentCount = Math.ceil(currentCount / capacity);
             }
         });
 
-        // Add standard columns
-        const csvHeaders = ['Level', 'Template Name', 'Copies', ...Array.from(uniqueFields)];
-        const csvRow = csvHeaders.join(',');
-
-        // Create dummy rows for each level
-        const rows = levels.map(l => {
-            const tplName = l.label_template ? l.label_template.name : 'N/A';
-            return `${l.level_name},${tplName},1,`; // Empty values for fields
-        });
-
-        const csvContent = "data:text/csv;charset=utf-8," + [csvRow, ...rows].join("\n");
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `print_template_${hierarchyId}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
+        setCalculatedCounts(counts);
         setActiveStep(1);
     };
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
+    // Step 2: Handle CSV Upload for a specific level
+    const handleFileUpload = (levelId, event) => {
+        const file = event.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
@@ -81,33 +92,96 @@ export default function PrintStation() {
             const text = evt.target.result;
             const lines = text.split('\n').filter(l => l.trim());
             if (lines.length > 0) {
-                const hdrs = lines[0].split(',').map(h => h.trim());
-                setHeaders(hdrs);
-                const data = lines.slice(1).map((line, i) => {
+                const headers = lines[0].split(',').map(h => h.trim());
+                const rows = lines.slice(1).map((line, i) => {
                     const values = line.split(',');
-                    const row = {};
-                    hdrs.forEach((h, index) => row[h] = values[index]?.trim() || '');
-                    return { id: i, ...row };
+                    const row = { _id: i };
+                    headers.forEach((h, idx) => row[h] = values[idx]?.trim() || '');
+                    return row;
                 });
-                setCsvData(data);
-                setActiveStep(2);
+                setUploadedData(prev => ({
+                    ...prev,
+                    [levelId]: { headers, rows }
+                }));
             }
         };
         reader.readAsText(file);
     };
 
-    // Placeholder for PDF generation
-    const handleGeneratePDF = async () => {
-        alert("PDF Generation Logic Coming Here!");
-        // Logic: Import jsPDF, use hierarchy templates, Loop csvData, fill placeholders, addPage, save.
+    // Check if all levels have data
+    const allLevelsUploaded = levels.every(l => uploadedData[l.id]?.rows?.length > 0);
+
+    // Check if row count matches expected
+    const getUploadStatus = (levelId) => {
+        const expected = calculatedCounts[levelId] || 0;
+        const actual = uploadedData[levelId]?.rows?.length || 0;
+        if (actual === 0) return { status: 'missing', color: 'default', text: 'Not Uploaded' };
+        if (actual !== expected) return { status: 'mismatch', color: 'error', text: `Mismatch: ${actual}/${expected}` };
+        return { status: 'ok', color: 'success', text: `Uploaded (${actual})` };
     };
 
-    const steps = ['Download Template', 'Upload Data', 'Generate PDF'];
+    // Step 3: Render Imposition Preview for a level
+    const renderImposition = (levelId) => {
+        const level = levels.find(l => l.id === levelId);
+        if (!level || !level.label_template) return <Typography>No template linked to this level.</Typography>;
+
+        const template = level.label_template;
+        const elements = typeof template.canvas_design === 'string'
+            ? JSON.parse(template.canvas_design)
+            : template.canvas_design || [];
+
+        const data = uploadedData[levelId]?.rows || [];
+        if (data.length === 0) return <Typography>No data uploaded for this level.</Typography>;
+
+        const paperDims = paperSize === 'A4' ? { w: 210, h: 297 } : { w: 215.9, h: 279.4 };
+        const pxPerMm = 3.78;
+        const labelW = (template.width || 100) * pxPerMm;
+        const labelH = (template.height || 150) * pxPerMm;
+        const cols = Math.floor(paperDims.w / (template.width || 100));
+        const rows = Math.floor(paperDims.h / (template.height || 150));
+        const labelsPerSheet = cols * rows;
+        const totalLabels = data.length;
+        const totalSheets = Math.ceil(totalLabels / labelsPerSheet);
+
+        return (
+            <Box>
+                <Typography variant="body2" sx={{ mb: 2 }}>
+                    <b>{totalLabels}</b> labels → <b>{totalSheets}</b> sheet(s) ({labelsPerSheet} per sheet on {paperSize})
+                </Typography>
+                {/* Render first sheet as preview */}
+                <Paper
+                    id="print-area"
+                    sx={{
+                        width: paperDims.w * pxPerMm,
+                        height: paperDims.h * pxPerMm,
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${cols}, ${labelW}px)`,
+                        gridTemplateRows: `repeat(${rows}, ${labelH}px)`,
+                        border: '1px solid #ccc',
+                        bgcolor: 'white',
+                        boxShadow: 2,
+                        mx: 'auto'
+                    }}
+                >
+                    {data.slice(0, labelsPerSheet).map((rowData, i) => (
+                        <Box key={i} sx={{ border: '1px dashed #eee', overflow: 'hidden' }}>
+                            <LabelPreview
+                                width={labelW}
+                                height={labelH}
+                                elements={elements}
+                                data={{ ...DUMMY_DATA, ...rowData }}
+                            />
+                        </Box>
+                    ))}
+                </Paper>
+            </Box>
+        );
+    };
 
     return (
         <Box sx={{ p: 3 }}>
             <Button startIcon={<ArrowBack />} onClick={() => navigate('/labels')} sx={{ mb: 2 }}>Back</Button>
-            <Typography variant="h5" gutterBottom>Bulk Label Printing</Typography>
+            <Typography variant="h5" fontWeight="bold" gutterBottom>Bulk Label Printing</Typography>
 
             <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
                 {steps.map((label) => (
@@ -117,62 +191,152 @@ export default function PrintStation() {
 
             {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-            <Paper sx={{ p: 4, minHeight: 300, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                {activeStep === 0 && (
-                    <Box sx={{ textAlign: 'center' }}>
-                        <CloudDownload sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                        <Typography variant="h6">Step 1: Download Data Template</Typography>
-                        <Typography color="text.secondary" sx={{ mb: 3 }}>
-                            Download a CSV file containing all required fields for the labels in this hierarchy.
-                        </Typography>
-                        <Button variant="contained" size="large" onClick={generateCSVTemplate}>Download CSV</Button>
-                    </Box>
-                )}
-
-                {activeStep === 1 && (
-                    <Box sx={{ textAlign: 'center' }}>
-                        <CloudUpload sx={{ fontSize: 60, color: 'secondary.main', mb: 2 }} />
-                        <Typography variant="h6">Step 2: Upload Filled Data</Typography>
-                        <Typography color="text.secondary" sx={{ mb: 3 }}>
-                            Upload the filled CSV file to generate print preview.
-                        </Typography>
-                        <Button variant="contained" component="label" size="large">
-                            Upload CSV
-                            <input type="file" hidden accept=".csv" onChange={handleFileUpload} />
+            {/* Step 1: Plan Quantities */}
+            {activeStep === 0 && (
+                <Paper sx={{ p: 4 }}>
+                    <Typography variant="h6" gutterBottom>How many items do you want to print?</Typography>
+                    <TextField
+                        label="Total Items (Lowest Level)"
+                        type="number"
+                        value={totalItems}
+                        onChange={(e) => setTotalItems(e.target.value)}
+                        sx={{ mb: 3, width: 300 }}
+                    />
+                    <Box>
+                        <Button
+                            variant="contained"
+                            startIcon={<Calculate />}
+                            onClick={handleCalculate}
+                            disabled={!totalItems}
+                        >
+                            Calculate Quantities
                         </Button>
-                        <Button sx={{ mt: 2 }} onClick={generateCSVTemplate}>Download Again</Button>
                     </Box>
-                )}
 
-                {activeStep === 2 && (
-                    <Box sx={{ width: '100%' }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h6">Step 3: Verify & Print</Typography>
-                            <Box>
-                                <Button onClick={() => setActiveStep(1)} sx={{ mr: 1 }}>Re-Upload</Button>
-                                <Button variant="contained" startIcon={<Print />} onClick={handleGeneratePDF}>Generate PDF</Button>
-                            </Box>
-                        </Box>
-
-                        <TableContainer sx={{ maxHeight: 400, border: '1px solid #eee' }}>
-                            <Table stickyHeader size="small">
+                    {Object.keys(calculatedCounts).length > 0 && (
+                        <TableContainer component={Paper} variant="outlined" sx={{ mt: 3 }}>
+                            <Table size="small">
                                 <TableHead>
                                     <TableRow>
-                                        {headers.map((h, i) => <TableCell key={i}>{h}</TableCell>)}
+                                        <TableCell>Level</TableCell>
+                                        <TableCell>Capacity</TableCell>
+                                        <TableCell>Required Labels</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {csvData.map((row) => (
-                                        <TableRow key={row.id}>
-                                            {headers.map((h, i) => <TableCell key={i}>{row[h]}</TableCell>)}
+                                    {levels.map(l => (
+                                        <TableRow key={l.id}>
+                                            <TableCell>{l.level_name}</TableCell>
+                                            <TableCell>{l.capacity || 10}</TableCell>
+                                            <TableCell><b>{calculatedCounts[l.id]}</b></TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </TableContainer>
+                    )}
+                </Paper>
+            )}
+
+            {/* Step 2: Upload Data */}
+            {activeStep === 1 && (
+                <Paper sx={{ p: 4 }}>
+                    <Typography variant="h6" gutterBottom>Upload CSV Data for Each Level</Typography>
+                    <Alert severity="info" sx={{ mb: 3 }}>
+                        Upload a separate CSV file for each packaging level. Ensure the row count matches the required quantity.
+                    </Alert>
+
+                    <TableContainer component={Paper} variant="outlined">
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Level</TableCell>
+                                    <TableCell>Required</TableCell>
+                                    <TableCell>Status</TableCell>
+                                    <TableCell>Action</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {levels.map(l => {
+                                    const status = getUploadStatus(l.id);
+                                    return (
+                                        <TableRow key={l.id}>
+                                            <TableCell><b>{l.level_name}</b></TableCell>
+                                            <TableCell>{calculatedCounts[l.id]}</TableCell>
+                                            <TableCell>
+                                                <Chip
+                                                    size="small"
+                                                    label={status.text}
+                                                    color={status.color}
+                                                    icon={status.status === 'ok' ? <CheckCircle /> : status.status === 'mismatch' ? <ErrorIcon /> : null}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Button component="label" variant="outlined" size="small" startIcon={<CloudUpload />}>
+                                                    Upload CSV
+                                                    <input type="file" hidden accept=".csv" onChange={(e) => handleFileUpload(l.id, e)} />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
+                        <Button onClick={() => setActiveStep(0)}>Back</Button>
+                        <Button
+                            variant="contained"
+                            onClick={() => setActiveStep(2)}
+                            disabled={!allLevelsUploaded}
+                        >
+                            Continue to Preview
+                        </Button>
                     </Box>
-                )}
-            </Paper>
+                </Paper>
+            )}
+
+            {/* Step 3: Preview & Print */}
+            {activeStep === 2 && (
+                <Paper sx={{ p: 4 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <Typography variant="h6">Preview & Print</Typography>
+                        <FormControl size="small" sx={{ width: 200 }}>
+                            <InputLabel>Paper Size</InputLabel>
+                            <Select value={paperSize} label="Paper Size" onChange={(e) => setPaperSize(e.target.value)}>
+                                <MenuItem value="A4">A4 (210 x 297 mm)</MenuItem>
+                                <MenuItem value="Letter">Letter (215.9 x 279.4 mm)</MenuItem>
+                            </Select>
+                        </FormControl>
+                    </Box>
+
+                    <Tabs
+                        value={previewLevel || levels[0]?.id}
+                        onChange={(_, val) => setPreviewLevel(val)}
+                        sx={{ mb: 3 }}
+                    >
+                        {levels.map(l => (
+                            <Tab key={l.id} label={l.level_name} value={l.id} />
+                        ))}
+                    </Tabs>
+
+                    <Box sx={{ overflow: 'auto', maxHeight: '60vh', bgcolor: '#f5f5f5', p: 2, borderRadius: 1 }}>
+                        {renderImposition(previewLevel || levels[0]?.id)}
+                    </Box>
+
+                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'space-between' }}>
+                        <Button onClick={() => setActiveStep(1)}>Back</Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<Print />}
+                            onClick={() => window.print()}
+                        >
+                            Print Labels
+                        </Button>
+                    </Box>
+                </Paper>
+            )}
         </Box>
     );
 }

@@ -15,7 +15,7 @@ export default function HierarchyConfig() {
 
     // Level editing
     const [openLevelDialog, setOpenLevelDialog] = useState(false);
-    const [levelForm, setLevelForm] = useState({ name: '', order: 1 });
+    const [levelForm, setLevelForm] = useState({ name: '', order: 1, capacity: 10 });
 
     // Designer Popup
     const [designerOpen, setDesignerOpen] = useState(false);
@@ -65,7 +65,8 @@ export default function HierarchyConfig() {
             await PackagingAPI.createLevel({
                 hierarchy_id: selectedHierarchy.id,
                 level_name: levelForm.name,
-                level_order: parseInt(levelForm.order)
+                level_order: parseInt(levelForm.order),
+                capacity: parseInt(levelForm.capacity) || 10
             });
             loadLevels(selectedHierarchy.id);
             setOpenLevelDialog(false);
@@ -102,9 +103,9 @@ export default function HierarchyConfig() {
     };
 
     return (
-        <Grid container spacing={2} sx={{ height: '100%' }}>
+        <Grid container spacing={2} sx={{ height: { xs: 'auto', md: '100%' } }}>
             {/* Sidebar: Hierarchies */}
-            <Grid item xs={3}>
+            <Grid item xs={12} md={3}>
                 <Paper variant="outlined" sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Typography variant="subtitle1" fontWeight="bold">Hierarchies</Typography>
@@ -126,7 +127,7 @@ export default function HierarchyConfig() {
             </Grid>
 
             {/* Main: Levels */}
-            <Grid item xs={9}>
+            <Grid item xs={12} md={9}>
                 <Paper variant="outlined" sx={{ height: '100%', p: 3, display: 'flex', flexDirection: 'column' }}>
                     {selectedHierarchy ? (
                         <>
@@ -202,7 +203,8 @@ export default function HierarchyConfig() {
                 <DialogTitle>Add Level</DialogTitle>
                 <DialogContent>
                     <TextField autoFocus margin="dense" label="Level Name (e.g., Box)" fullWidth value={levelForm.name} onChange={(e) => setLevelForm({ ...levelForm, name: e.target.value })} sx={{ mb: 2 }} />
-                    <TextField type="number" label="Order (1 = Inner, 10 = Outer)" fullWidth value={levelForm.order} onChange={(e) => setLevelForm({ ...levelForm, order: e.target.value })} />
+                    <TextField type="number" label="Order (1 = Inner, 10 = Outer)" fullWidth value={levelForm.order} onChange={(e) => setLevelForm({ ...levelForm, order: e.target.value })} sx={{ mb: 2 }} />
+                    <TextField type="number" label="Capacity (Items per this level)" fullWidth value={levelForm.capacity} onChange={(e) => setLevelForm({ ...levelForm, capacity: e.target.value })} helperText="How many of the previous level fit in one of this level" />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenLevelDialog(false)}>Cancel</Button>
@@ -214,7 +216,7 @@ export default function HierarchyConfig() {
             <Dialog fullScreen open={designerOpen} onClose={() => setDesignerOpen(false)}>
                 {designerOpen && (
                     <LabelDesigner
-                        propTemplateId={editingLevel?.label_template_id}
+                        propTemplateId={editingLevel?.label_template_id || editingLevel?.label_template?.id}
                         onClose={() => setDesignerOpen(false)}
                         onSaveSuccess={handleDesignerSave}
                     />
