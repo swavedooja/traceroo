@@ -1,12 +1,12 @@
 package com.ilms.backend.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "label_template")
+@Table(name = "label_templates")
 @Getter
 @Setter
 public class LabelTemplate {
@@ -14,24 +14,32 @@ public class LabelTemplate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
     private String name;
-
-    @Column(name = "level_name")
-    private String levelName; // ITEM, BOX, PALLET, CONTAINER
-
-    @Column(name = "width_mm")
-    private Double widthMm;
-
-    @Column(name = "height_mm")
-    private Double heightMm;
+    private String type; // e.g. "Material", "Location", "Shipping"
 
     @Column(columnDefinition = "TEXT")
-    private String layoutJson; // JSON string of elements
+    private String zplContent;
 
-    private String status; // DRAFT, ACTIVE, RETIRED
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "material_id")
+    private Material material; // Optional: specific to a material
 
-    @ManyToOne
-    @JoinColumn(name = "material_code")
-    private MaterialMaster material; // Optional: specific to a material
+    private Boolean isDefault;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }

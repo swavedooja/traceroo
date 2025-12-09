@@ -14,10 +14,10 @@ public class MaterialDocument {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "material_code", referencedColumnName = "material_code")
-    private MaterialMaster material;
+    @JoinColumn(name = "material_id")
+    private Material material;
 
-    private String docType; // MSDS | Technical | Certificate
+    private String docType;
     private String filename;
     private String url;
 }

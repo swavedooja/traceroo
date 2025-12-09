@@ -20,12 +20,8 @@ public abstract class ContainerUnit {
     private String status; // EMPTY, PARTIAL, FULL, SHIPPED
 
     @ManyToOne
-    @JoinColumn(name = "warehouse_code")
-    private Warehouse warehouse;
-
-    @ManyToOne
     @JoinColumn(name = "location_id")
-    private StorageLocation location;
+    private Location location;
 
     // Parent container (e.g. Box inside Pallet)
     @ManyToOne

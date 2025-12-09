@@ -11,7 +11,7 @@ module.exports = (env, argv) => {
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: 'bundle.js',
-      publicPath: isProduction ? '/traceroo/' : '/',
+      publicPath: isProduction ? '/tracerooNew/' : '/',
       clean: true,
     },
     resolve: {

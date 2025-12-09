@@ -1,0 +1,679 @@
+Business Flow Summary
+A) Master data creation
+1. Define the product - eg. Shampoo Bottle - material attributes like code, type (Raw Material,
+Finished Goods, Scrap, etc), state (Solid, Liquid, Dust, etc), category, class (Packed FG), group (Latitude
+Laptops, 100 ML Shampoo Bottles, etc), description, country of origin, UOM, weight, dimension, shelf life,
+EAN, UPC, Storage Type, Procurement Type, Pre requisite Environmental Parameters, Trade UOM, Trade Item
+Weight, Trade Item Dimension, Yes or No Value fields like Packaged Material, Military Material, Fragile
+Material, High Value Category, Environment Sensitive, Hazardous Material, Batch Material and all other
+relevant required material details
+2. Define Packaging Hierarchy - Hierarchy's Dimension, Capacity, Identification Technology -
+Barcode/RFID/BLE
+3. For each packaging hierarchy level - attributes required - gtin, expiry, sensitivity, capacity, other relevant
+fields
+B) Label ( Barcode )
+1. Label template designing for each level
+2. Label generation with the option of repetition required (for each level eg. i need two barcode label copies
+for each sachet). Design based on the paper size (eg. how many labels per A4 size page)
+3. Label printing - Direct print job or PDF generation
+B1) Non Label data carrier tag generation ( RFID )
+C) Material Inventory Creation ( Barcode)
+1. Serialization and Raw Inventory (Registration), 2. Labelling, 3. Scanning
+C1) Material Inventory Creation ( RFID )
+1. Serialization and Raw Inventory (Registration), 2. Tag Commissioning, 3. Tag Detection
+D) Packaging Inventory Creation (of cartons, boxes, etc) - Barcode
+1. Serialization and Raw Inventory (Registration), 2. Labelling, 3. Scanning
+D1) Packaging Inventory Creation (of cartons, boxes, etc) - RFID
+1. Serialization and Raw Inventory (Registration), 2. Labelling, 3. Scanning
+E) Capture Events
+1. Track and Trace Events, 2. Ownership, 3. Packing List
+F) Material Track and Trace Dashboard
+1. Over view dashboard, 2. Realtime Product Lifecycle (drill down)
+Solution In Detail
+1. Masterdata Creation
+A) Product Definition:
+• All material details and attributes to be input as master data – Material Code,Material
+Name, Material Description, UPC, Type, Class, State, Group, Shelf Life, Storage Type,
+Procurement Type, UOM, Net Weight, Dimensions, Trade UOM, Trade Weight, Trade
+Dimensions, EAN, UPC, IS_Packaged, IS_Fragile, IS_Env_Sensitive (Env Parameters
+linked), IS_High_Value, IS_Batch_Managed, packaging_material_code
+• Single source of truth for all item/product/asset related information.
+• Set of attributes that drive system logic for tracking, handling, and compliance
+• Sample Material Details – Core Details
+Material Code: MAT-2024-0001 │ Material Name: Shampoo Bottle 100ML │ Description:
+Premium herbal shampoo, 100ml bottle │ EAN: 8901234567890 │ UPC Code: 12345678901
+│ Country of Origin: India
+Mapping Supplementary Data through Tables
+• Needs a mapped Handling Parameter table (Environment parameters, Hazardous
+behavior details, etc)
+• Needs a supplementary material image storage mapping (material image, trade item
+image, etc)
+• Needs a supplementary document storage mapping (Technical datasheet doc,
+Regulatory Certificate docs, etc)
+Logical Grouping of Fields (UI/UX Perspective)
+To make the screen user-friendly, tabs or sections:
+1. General Info: Code, Name, Description, SKU, Origin
+2. Classification: Type, Class, Group, Category
+3. Dimensions & Weight: Net Weight, Dimensions, Trade UOM
+4. Compliance & Safety: Hazardous, Fragile, Environmental Sensitivity
+5. Storage & Handling: Shelf Life, Storage Type, Environmental Parameters
+6. Serialization & Batch: Batch Managed, Serialized, EPC Format
+7. Integration: ERP Code, External IDs
+8. Attachments: Upload MSDS, Images, Certificates
+UI Sample :
+B) Packaging Hierarchy Configuration
+• Define Packaging Levels: The user adds levels sequentially, starting from the innermost
+unit (Level 1). For each level, they define:
+o Level Name: E.g., ITEM, CASE, PALLET, CONTAINER.
+o Contained Quantity: The number of units from the previous level (e.g., 12 ITEMS
+per CASE).
+o Dimensions & Capacity: Physical dimensions and volume/weight capacity.
+o Identification Technology: The user selects from a dropdown: Barcode, RFID, or
+BLE. This selection determines which workflows are available for that packaging
+level.
+o Data Carrier Attributes: Based on the technology, specific attributes are required:
+▪ For Barcode: Barcode Type (QR, Code128), Label Template, Label Size,
+Standard (GS1, Custom)
+▪ For RFID: Tag Type (e.g., Standard Passive, On-Metal), EPC Encoding
+Standard (e.g., SGTIN-96), Tag Sensitivity.
+C) Configure Hierarchy Level wise Attributes
+Level Code: Short code for system reference (e.g., L1, L2)
+Default Label Copies: Number of labels to print per unit
+Is Returnable: Yes/No
+Is Serialized: Yes/No
+• Configure Hierarchy Metadata :
+Packaging Capacity Constraints: Yes/No
+GTIN Assignment Dynamic Format: XXXXXXX
+Activation Time Period: FromDate – ToDate
+• Hierarchy Visualization:
+1. Tree View visualization
+2. The system provides a visual representation of the configured hierarchy, showing the
+total number of base items contained at each aggregate level (e.g., 1 PALLET = 50
+CASES = 600 ITEMS).
+3. Quantity Calculator
+4. Sample Label preview for Each Level
+Packaging Hierarchy Definition Master
+Pa
+cka
+gin
+Def
+init
+ion
+ID
+Mater
+ial_ID
+Pare
+nt
+Mate
+rial_I
+D
+Materi
+alType
+Chil
+d_Pa
+ckag
+ing_
+Qty
+ID
+Tech_Dat
+a Carrier
+EPC
+Format
+Label
+Templat
+e
+GTIN
+Format
+Dimen
+sion
+PD
+01
+1001 0
+ITEM 1 Barcode
+urn:epc:i
+d:sgtin
+ITEM_LAB
+EL
+095060
+001234
+57
+MAT001 PD
+01
+1002 1001 CARTO
+N
+12 RFID
+urn:epc:i
+d:sscc
+CARTON_
+LABEL
+095060
+001234
+72
+MAT001 PD
+01
+1003 1002 BOX 4 RFID
+urn:epc:i
+d:sscc
+BOX_LAB
+EL
+095060
+001234
+74
+Label Template – Separate Mapping table required with Packaging Hierarchy to maintain
+version wise templates.
+Table 2 – Label Template Packaging Hierarchy Mapping
+Material
+ID
+PackagingDefinitionId Level Id Template Id
+Template
+Version Id
+Status
+MAT001 PD01 L0 TMPL01 1.0
+RETIRED,
+DRAFT
+MAT001 PD01 L0
+TMPL01 1.1 ACTIVE
+MAT001 PD01 L2 TMPL03
+Table 1- Label Template Master
+Templat
+e ID
+Template Name
+Templat
+e
+Version
+Label_Dimension_U
+OM
+Label_heig
+ht
+Label_widt
+h
+Label_Dept
+h
+STATU
+S
+Templat
+e JSON
+TMPL01 Shampoo_Bottle_Template 1.0 MM 5 5 8 ACTIVE {}
+TMPL02 Shampoo_Box_Template 1.0 MM 5 5 7 ACTIVE {}
+TMPL03
+Shampoo_Container_Templ
+ate
+1.0 MM 5 5 6 ACTIVE {}
+Table 3 - Template Parameter Mapping
+Templat
+e ID
+Num_of_Charact
+ers
+Languag
+e
+ParameterName
+Label_Dimension_U
+OM
+attr_heig
+ht
+attr_widt
+h
+Attr_Positi
+on
+STATU
+S
+TMPL01 10 EN EXPIRY_DATE MM 5 5 {x,y}
+ACTIV
+E
+TMPL01
+8 EN
+MAGNUFACTURING_D
+ATE
+MM 5 5
+ACTIV
+E
+TMPL01
+12 EN PRODUCT_ID MM 5 5
+ACTIV
+E
+Table 4 - Template Data Carrier Mapping
+Template
+ID
+DataCarrierType Status
+TMPL01 QRCODE Y
+TMPL01 RFID Y
+TMPL01 BLE Y
+Screen Layout: Combined View
+Header
+• Title: “Packaging Hierarchy Setup & Attributes”
+Left Panel: Hierarchy Tree
+• Interactive Tree View:
+o Shows levels in nested format (example - ITEM → BOX → PALLET →
+CONTAINER)
+o Each node clickable to edit attributes
+• Buttons:
+o [+ Add Level] (adds a new node)
+o [Remove Level] (removes selected node)
+• Hierarchy Summary:
+o Auto-calculated total units (e.g., 1 CONTAINER = 20 PALLETS = 10,000
+ITEMS)
+Right Panel: Level Attributes Form
+When a level is selected in the tree, the right panel displays its attributes:
+1. Core Info
+• Level Name
+• Level Code (auto-generated)
+• EPC Format (dropdown)
+• Serial Number Pattern
+2. Quantity & Dimensions
+• Contained Quantity
+• Max Capacity
+• Dimensions (L/W/H)
+• Weight
+3. Identification Technology
+• Dropdown: Barcode / RFID / BLE
+• Dynamic fields based on selection:
+o Barcode: Symbology, Label Template, Label Size
+o RFID: Tag Type, EPC Encoding, Sensitivity
+o BLE: Beacon Type, Broadcast Interval
+Packaging Hierarchy Master Attributes
+These define the structure and identification rules for each level:
+1. Level Metadata
+a. Level Name (e.g., ITEM, BOX, PALLET, CONTAINER)
+b. Level Code (e.g., L1, L2)
+c. Hierarchy Sequence (innermost to outermost)
+d. ID Format (e.g., SN-YYYY-XXXXXX, BOX-YYYY-XXXXXX)
+e. Identification Technology (Barcode, RFID, QR, BLE)
+f. Label Template (Select/Create)
+g. Label Size (e.g., 50mm × 30mm)
+h. Reprint Copies (numeric)
+2. Physical Attributes
+a. Dimensions (Length × Width × Height)
+b. Capacity (number of child units)
+c. Weight (empty and full)
+d. Volume (optional)
+3. Technology-Specific
+a. Barcode Symbology (Code128, GS1-128, QR)
+b. RFID Tag Type (Passive, On-Metal)
+c. EPC Encoding Standard (SGTIN-96, SSCC-96)
+d. BLE Beacon Type (if applicable)
+4. Regulatory & Special Attributes
+a. Fragile (Yes/No)
+b. Hazardous (Yes/No)
+c. Environmental Sensitivity (Yes/No)
+d. Returnable Packaging (Yes/No)
+Packaging Level Attributes
+These are transactional and compliance-related attributes for each instance of a level:
+1. Mandatory Attributes
+a. GTIN (linked to product)
+b. Expiry Date (inherited from item batch)
+c. Batch ID
+d. Manufacturing Date
+e. Capacity (e.g., 12 items)
+f. Net Weight (calculated)
+g. Gross Weight (including packaging)
+2. Conditional Attributes
+a. Temperature Sensitivity
+b. Humidity Sensitivity
+c. Fragility Flag
+d. Hazard Class
+e. Special Handling Code (e.g., “Handle with Care”)
+f. Quarantine Hold (QC failed)
+g. Destination Code (warehouse/region)
+3. Tracking Attributes
+a. Serial Number (e.g., BOX-2024-0001)
+b. QC Status (Pass/Fail/Hold)
+c. Owner (Warehouse, Logistics, Customer)
+d. Location (bin/zone)
+e. Timestamp Created
+f. Last Updated
+2. Label/Tag Management
+Barcode Label
+● Drag-and-Drop Canvas: Users design labels by dragging elements like text boxes,
+barcode fields, QR codes, and images onto a canvas representing the physical label size.
+● Dynamic Fields: The designer is context-aware of the packaging hierarchy. When
+designing a "Box Label," for example, the user has access to dynamic placeholders for
+box-level data {BOX_ID}, parent-level data {PALLET_ID}, and child-level data
+{ITEM_SERIAL_LIST}. This allows for the creation of labels that contain full genealogical
+information.
+● Barcode Standards: The system supports a wide range of barcode symbologies, including
+Code128, EAN-13, DataMatrix, and QR Code. It has built-in support for generating GS1-
+compliant barcodes (e.g., GS1-128) with the correct Application Identifiers (AIs) for data
+like GTIN, Batch/Lot, and Serial Number.
+● Version Control & Approval: Label templates undergo a formal lifecycle (Draft -> Review
+-> Approved -> Active). All versions are stored, and an approval workflow ensures that only
+validated templates are used in production
+GS1-Compliant Data Elements
+● When designing labels for different levels, include appropriate GS1 data as needed.
+For example:
+Packaging Level Mandatory Data
+Elements on Label GS1 AI (for reference)
+Item (Unit) GTIN, Serial Number,
+Batch/Lot, Expiry Date
+(01) GTIN, (21) Serial, (10)
+Lot, (17) Expiry
+Carton/Case
+SSCC (Serial Shipping
+Container Code), GTIN of
+contained items, Quantity,
+Batch
+(00) SSCC, (01) GTIN, (37)
+Count, (10) Lot
+Pallet
+SSCC, Shipment Identifier,
+Destination (GLN or
+Address)
+(00) SSCC, (410) Ship-toGLN, (420) Destination
+Postal Code
+● Default Barcode Choices: Often, certain barcode types are default for each level in
+this scenario:
+● Item: Use a 2D code (GS1 DataMatrix or a QR Code) since it can compactly encode
+item serial, batch, etc., and is small enough to fit on a small item. If customer
+engagement is needed, a QR might serve dual purpose (logistics & consumer info).
+● Case/Carton: Use GS1-128 or Code128 in a larger label, encoding the SSCC and
+possibly item GTIN and counts.
+● Pallet: Use a large GS1-128 label (and optionally an RFID tag as well for automated
+handling). The pallet label mainly carries the SSCC and maybe a human-readable
+address label.
+● Sample Label Data: (for Shampoo Bottle 100ML)
+● Template Name: Product_Item_Label_v2
+● Barcode: Code128 encoding something like {{ITEM_SKU}}-{{SERIAL}} (concatenating a
+SKU code and serial number).
+● Text Fields: Product name, Expiry Date (e.g. EXP 12/2025).
+● Graphic: Company logo.
+● Size: 50mm × 30mm label.
+● Associated Level: ITEM (i.e., for each shampoo bottle).
+● Status: Version 2 (Approved & Active for use).
+● RFID Tag
+For levels using RFID, the system provides a tag commissioning workflow typically
+carried out via a handheld reader/writer (either a dedicated device or a mobile app
+with a connected RFID reader):
+● Initiate Commissioning: The operator selects the product (and packaging level, if
+applicable) and the quantity of tags to commission. For example, commission 100
+RFID tags for Item level of Shampoo Bottle batch XYZ.
+● Encoding (Programming): The operator brings each blank RFID tag in range of the
+writer. The system generates a unique EPC (Electronic Product Code) for that item or
+packaging unit. For instance, an item-level EPC might be based on SGTIN-96 encoding
+of the product’s GTIN and serial, whereas a carton might use an SSCC encoding. The
+system writes this EPC onto the tag’s microchip.
+● Verification: Immediately after writing, the system reads back the tag to verify the
+data was written correctly and that the tag is functional. This guarantees the tag is not
+faulty and contains the intended code.
+● Database Association: Upon successful write and verify, the unique ID (EPC) is
+recorded in the application database, linking that physical tag to the digital record of
+the specific item (with its product info, batch, etc.). This is akin to “registering” the
+item as having that tag.
+● Physical Application: The operator affixes the now-programmed tag to the physical
+item or its packaging. The system may provide on-screen placement guidelines (e.g.,
+“Place the tag on the side of the bottle away from metal cap”). This step is repeated for
+each item/package until the required quantity of items are tagged.
+● (After this commissioning process, we have items or packages each with a unique
+RFID tag ID, ready to be scanned in bulk or individually in subsequent processes.)
+● 3. Barcode-Based Inventory Creation
+The barcode-based workflow is a deliberate, operator-driven process designed for
+environments where manual handling is standard. The process involves three key
+steps:
+● Serialization and Registration: The system generates a range of unique serial
+numbers for a given product and batch (if not already generated during master data or
+order creation). These serial numbers are stored in the database in a “pre-inventory”
+state associated with that product/batch, meaning the system expects these items to
+exist but hasn’t confirmed them physically yet. For example, for a production batch of
+1000 Shampoo Bottle units, serials 0001 to 1000 might be reserved in advance.
+● Labeling: Using the label templates defined earlier, barcode labels corresponding to
+each reserved serial number are printed. Operators or automated label applicators
+affix these labels to each individual product unit as it is produced or before it moves
+out of the manufacturing area. Now each physical item has a barcode (with its unique
+ID).
+● Scanning: An operator uses a mobile app or handheld barcode scanner to perform an
+initial scan of each item’s barcode. This is often done at the end of the production line
+or at the point of entry into the warehouse. Scanning serves two purposes: (1) It
+confirms that the label is present and readable (quality check), and (2) it transitions
+the item’s status from “pre-inventory” to “active inventory” in the system, at a
+specified location (for instance, Production Output Bin or Finished Goods Storage).
+In our example, once a Shampoo Bottle with serial 0001 is scanned, the system marks
+it as a real, available item in inventory. This step validates the physical existence of
+each item and its readiness for the next stage (such as packing).
+● After these steps, the individual items (Shampoo Bottle 100ML units) are now uniquely
+identified, labeled, and accounted for in the inventory system. They are ready to be
+picked up for packing into higher-level containers (cartons, pallets) or for direct
+shipment.
+●
+3. Barcode-Based Inventory Creation
+The barcode-based workflow is a deliberate, operator-driven process designed for environments
+where manual handling is standard. The process involves three key steps :
+1. Serialization and Registration: The system generates a range of unique serial numbers for a
+given product and batch. These serial numbers are registered in the database in a "preinventory" state.
+2. Labeling: The corresponding serialized barcode labels, generated in the previous module, are
+physically applied to each individual product unit.
+3. Scanning: An operator uses the mobile app to perform an initial scan of each item. This scan
+confirms that the label is readable and moves the item's status from "pre-inventory" to "active
+inventory" at a specified location (e.g., "Production Output Bin"). This step validates the
+physical existence and readiness of the item for the next process, such as packing.
+4. RFID-Based Inventory Creation
+The RFID-based workflow for inventory creation is designed for higher automation and bulk
+handling scenarios (e.g., scanning many items at once). It parallels the barcode flow but
+leverages RFID capabilities:
+ Serialization and Registration: The system allocates unique identifiers for each
+item (as EPC codes, often following a standard like SGTIN for trade items). These
+could be pre-generated in batches or generated on-the-fly. Similar to the barcode
+case, these IDs remain in a “pending” state until verified. For example, the system
+prepares EPC codes for 1000 shampoo bottles (each EPC incorporating the product
+code and a unique serial).
+ Tag Commissioning: This step corresponds to the commissioning process
+described in the Label/Tag Management section. For each item, an RFID tag is
+encoded with the item’s unique EPC. This can be done one by one or with multiple
+tags if the encoder supports it. As tags are written and verified, each item’s record in
+the database is updated from “pending” to “tagged” with an associated Tag ID. The
+operator attaches the tag to the item immediately after writing (unless preembedded tags are used).
+ Tag Detection (Initial Scan): Once the tags are on the items, an operator or an
+automated RFID gate performs a scan of the items to officially bring them into
+active inventory. For instance, the operator might place 50 tagged bottles in a box
+and use a handheld reader to scan all tag IDs at once. The system compares the
+scanned IDs with the expected list (from the registration step). All items
+successfully read are moved to “active inventory” at the designated location. If any
+expected tag is not read, that item can be flagged for manual check. This initial bulk
+scan dramatically speeds up the inventory registration compared to scanning each
+barcode individually. It not only confirms tag readability but also often captures the
+items into an aggregate (if scanned in a group, the system can infer those 50 items
+are now collectively in one container or location).
+In summary, RFID-based item inventory creation replaces the manual scanning of each
+item with a more automated scan, reducing labor. By the end of this process, all Shampoo
+Bottle 100ML units have RFID tags that are registered and their existence in inventory is
+confirmed. This sets the stage for packing them into cartons or moving them through the
+supply chain with RFID tracking.
+5. Packaging Inventory Creation (Barcode)
+Once individual items are in active inventory, the next step is to aggregate them into higherlevel packaging (such as cartons, boxes, or pallets) and create inventory entries for those
+packages:
+ Serialization and Registration: For each packaging unit to be created (e.g., an
+empty carton or pallet), the system generates a unique identifier. If following GS1
+standards, this could be an SSCC (Serial Shipping Container Code) for logistic units
+like boxes or pallets. In our example, say we’re going to create cartons each holding
+12 shampoo bottles – the system will generate a unique ID for each carton needed
+(e.g., CARTON0001, CARTON0002, etc., or a serial coded into a barcode). These IDs
+are stored in a pending state, similar to items, often linked to the product or order.
+ Labelling: Corresponding barcode labels for each carton are printed. Each label
+will typically include the carton’s unique ID in barcode form (and human-readable
+form). Operators assemble the carton (place the 12 bottles inside) and then affix the
+label to the carton. Now physically we have, for example, a box filled with 12 labeled
+bottles and a label on the box identifying it as “Carton 0001” containing those
+specific items. This step may be aided by a packing UI that lists which serials go into
+which carton.
+ Scanning (Packing Confirmation): After sealing the carton and labeling it, the
+operator uses the scanner to confirm the contents and activate the carton in
+inventory. Typically, the system will prompt the user to scan all item barcodes
+going into the carton followed by the carton’s own barcode (or vice versa). For
+instance, the operator scans each of the 12 bottle barcodes, then scans the carton
+barcode, which tells the system “these 12 item IDs are now packed in Carton0001.”
+This creates a parent-child relationship in the database (often recorded as a
+packing list or aggregation event). Upon this confirmation, the system marks the
+carton’s status as active inventory (e.g., location could be “Packing Zone” or ready
+for shipment) with a known content of 12 items. The items inside may be
+automatically updated to reflect that they are no longer loose but are inside that
+carton (their location might update to the carton ID as a holding location). If any
+item’s barcode doesn’t scan or is missing, the system can alert the operator to
+resolve it before completing the pack.
+ In cases where a large batch of items is being packed, the system might
+allow uploading a list of item codes or selecting them from a list, rather than
+scanning each one, but scanning is most reliable for accuracy.
+After performing these steps for all needed cartons, we will have, say, 84 cartons (if we had
+1000 bottles, we’d fill 83 cartons with 12 and maybe one carton with 4 remaining,
+depending on exact numbers). Each carton now has its own entry in inventory with a
+unique ID (barcode label) and knows which item serials it contains.
+If there are higher levels (for example, pallets containing multiple cartons), the process
+repeats at the next level:
+ Generate a unique ID for the pallet (another code, possibly an SSCC).
+ Label the pallet (print out a pallet label).
+ Scan each carton on the pallet and then scan the pallet’s code to register those
+cartons under that pallet.
+This way, we build a hierarchical relationship: Item -> Carton -> Pallet -> etc. using
+scanning steps at each aggregation.
+6. Packaging Inventory Creation (RFID)
+This is the analogous process to #5, but using RFID technology for cases where packaging
+levels (cartons/pallets) are tracked with RFID tags instead of or in addition to barcodes:
+ Serialization and Registration: The system generates unique IDs for each
+packaging unit (carton, pallet) as before. These could be the same IDs that would be
+in a barcode, but now will be encoded to RFID tags. For example, a pallet might get
+an SSCC-based EPC code. The IDs are reserved in the system awaiting
+commissioning.
+ Labelling (Tag Commissioning): Rather than printing a barcode (or sometimes in
+addition to a visual barcode label), an RFID tag is prepared for each packaging unit.
+Using the RFID writer, the operator programs each carton’s unique ID into an RFID
+tag (following perhaps the SSCC EPC encoding). The tag is then attached to the
+carton or pallet. Often, smart labels are used which have both a printable barcode
+and an embedded RFID inlay—so in one step, you print the human-
+readable/barcode info and also encode the RFID. In our scenario, each carton gets
+an RFID label encoded with its ID, and similarly pallets get RFID tags.
+ Scanning (Detection & Packing Confirmation): Now, to register the packed
+cartons, the operator can use an RFID reader (handheld or a fixed gate) to
+scan/detect multiple tags in one go. For instance, after placing 12 tagged bottles
+into an RFID-tagged carton and sealing it, the operator can simply read the carton’s
+tag and all item tags inside it. Modern RFID systems can read through the
+cardboard, detecting the item tags within the carton as well as the carton’s own tag.
+The application will associate the read item IDs to the carton ID automatically
+(since it sees them all in one “scan event”). This is effectively an aggregation event
+captured via RFID without having to scan each item manually. Once the system
+confirms all expected items are present in the carton (comparing the list of item IDs
+against what should be there), it marks the carton as active in inventory. If any items
+are missing or unreadable, the system can prompt for manual intervention (like
+scanning the barcode of the missing item or replacing a faulty tag). Similarly, to
+create a pallet, the operator can stack the RFID-tagged cartons on a pallet, then use
+the reader to scan all tags; the system will pick up the pallet tag and all carton tags,
+linking cartons to pallet. The pallet is then recorded as containing those cartons
+(and by extension all the items within).
+After RFID-based packaging creation, we have the hierarchy established in the system with
+much faster scanning. A single RFID scan can capture a full pallet’s worth of data in
+seconds. Each packaging level (carton, pallet) is now an entity in inventory with knowledge
+of its children items. The inventory system at this point has a complete picture of all items
+and how they are grouped.
+7. Capture Events
+With all items and packages identified and in the system, the solution continuously
+captures events to enable end-to-end traceability. These events provide the track in trackand-trace, logging each significant change in status/location/ownership. Key types of
+events include:
+ Track & Trace Events (Movement and Status Changes): Every time an item or
+package moves or its status changes, an event is recorded. For example: Packing
+events, Shipping dispatch, In-Transit scans, Receiving, Storage, Picking for an order,
+Loading onto truck, etc. Each event typically records the timestamp, location, the
+IDs of items/packages involved, and the type of event. If using standards like EPCIS,
+these might be captured as events like Object Event (for observing items),
+Aggregation Event (for associating or disassociating parent-child relationships),
+Transfer Event (ownership xfer), Transportation Event (shipping). In simpler terms,
+whenever a shampoo bottle or its container is scanned at a checkpoint, the
+system logs “Item X seen at Location Y at Time Z.” This builds a timeline of where
+each item has been.
+ Ownership Events: When the ownership of an item or a whole shipment changes,
+we capture it. For instance, when the warehouse releases a batch of cartons to a
+distributor, an ownership transfer event updates those items/packages to now be
+owned by the distributor (and maybe location changes to “In transit” or the
+distributor’s facility). This is crucial for accountability and auditing—knowing who is
+responsible for the product at each stage. The system might record an event like
+“Transfer of 50 cartons of Shampoo Bottle 100ML from Factory A to Distributor B on
+2025-11-01 15:30 by UserXYZ”. If the items are returned or moved to a retailer,
+those are additional events.
+ Packing List / Aggregation Events: These events record the parent-child
+relationships (which items are packed in which container). While the actual
+association is made during Packaging Inventory Creation (steps 5 and 6 above),
+here we emphasize storing that as an event record. For example, when 12 items
+were placed in Carton 0001, the system logs an aggregation event that “Items
+[ID1...ID12] aggregated into Carton0001 at time T”. Likewise, when cartons are put
+on a Pallet, an event “Cartons [C1...C5] aggregated into Pallet P001”. These packing
+list records allow someone later to query “what was in this carton” or “which pallet
+was this item on”. They also support disassembly events if something is unpacked
+(e.g., if a carton is opened and items removed, an event is logged that those items
+are no longer in that carton).
+ Other Events: There could be events for quality inspections (an item failed QC and
+put on hold), for repacking (items moved from one carton to another), for
+destruction (item disposed), or for cycle count inventory checks, etc. The system
+should be flexible to log any event relevant to tracking the material’s lifecycle.
+All these events are typically stored with references to the item and packaging IDs. By
+querying these events, one can reconstruct the entire history of a product’s journey.
+For example, a Shampoo Bottle 100ML (Serial 0001) might have a series of events:
+Produced at Plant (Commissioned) → Packed into Carton0001 → Carton0001 packed onto
+PalletP05 → Shipped from Plant to Dist Center (ownership to Distributor) → PalletP05
+received at Dist Center (checked-in) → Carton0001 removed from Pallet for order →
+Carton0001 shipped to Retailer X (ownership transfer) → Carton0001 received at Retailer X
+→ Item 0001 sold (final event).
+Each arrow is one or more events captured in the system.
+8. Material Track and Trace Dashboard
+The final piece of the solution is a dashboard that presents all this data in an accessible,
+user-friendly manner. It serves both as an operational tool and an analytical/visibility tool.
+ Overview Dashboard: This provides a high-level, aggregate view of the track-andtrace system’s current state and recent activity. It typically includes:
+ Key Inventory Metrics: e.g., Total items produced today, Number of items
+currently in each stage (in production, in warehouse, in transit, delivered),
+number of active pallets/containers, etc. For instance, it might show
+“Inventory: 1000 items (800 in warehouse, 200 in transit)”.
+ Live Tracking Summary: Maps or charts highlighting where products are.
+Perhaps a map with markers for each distribution center or transit route
+where the items are presently, or a count of items by location.
+ Alerts/Exceptions: If any issues have been detected (like a missing scan for
+an expected item, a temperature excursion event if environment sensitive,
+any item on hold), the dashboard flags them. For example, “5 items flagged
+in QA hold” or “2 packages overdue in transit”.
+ Recent Events Feed: A real-time feed or log of the latest events captured
+(e.g., “10:32 AM: Pallet P001 departed Warehouse A for Distributor B”). This
+keeps users informed of the latest movements.
+ The overview likely includes filtering options (by product, batch, date range)
+so a user can drill into the data they care most about. For our Shampoo
+example, you might filter the dashboard to just “Shampoo Bottle 100ML” to
+see stats and movements related to this product.
+ Realtime Product Lifecycle (Drill-down): This feature allows users to query the
+system for the full history and current status of a specific item or batch. Some key
+capabilities:
+ Search/Scan: The user can enter a code (or scan a barcode/RFID) for an
+item or a container. The system will pull up that entity’s profile. For an item, it
+might show: Product: Shampoo Bottle 100ML, Serial: 0001, Batch: XYZ, Mfg
+Date: 2025-10-30, Expiry: 2027-10-30, Current Status: In Transit, Current
+Owner: Distributor B, Current Location: En route to Retailer X.
+ Event History Timeline: A chronological list (or visual timeline) of all events
+pertaining to that item. This could be shown as a timeline chart or simply a
+table:
+ 2025-10-30: Manufactured and serialized at Plant A (by user …)
+ 2025-10-30: Packed into Carton0001 (Aggregation event)
+ 2025-10-30: Carton0001 aggregated onto Pallet P05
+ 2025-11-01: Pallet P05 shipped from Plant A to Dist Center B
+(Shipment event, Ownership to Distributor)
+ 2025-11-02: Pallet P05 received at Dist Center B (Receiving event)
+ 2025-11-10: Carton0001 picked for order #12345 (Disaggregation
+from pallet, preparing to ship to Retailer)
+ 2025-11-11: Carton0001 shipped to Retailer X (Ownership transfer to
+Retailer)
+ 2025-11-12: Carton0001 received at Retailer X store 17
+ Drill into Hierarchy: The dashboard should also show relationships. If you
+look up a Carton ID, it should list the items inside. If you look up an Item ID, it
+should show what carton/pallet it was or is in. For example, querying
+Carton0001 might show a section “Contents: Item0001, Item0002, …
+Item0012 (with their statuses)” and maybe “Parent: Pallet P05”.
+ Lifecycle Visualization: Some dashboards provide a graphical journey map
+– for instance, a line or flow diagram showing each location the product went
+through, sometimes with dates annotated, and color-coded status
+(completed, in progress, etc.). This helps quickly identify if, say, something is
+stuck in one stage too long.
+ Real-time updates: If the item is in transit and an RFID gate scans it or an
+update comes in, the dashboard for that item might update in near-real-time
+to reflect “now passed checkpoint XYZ”.
+Overall, the Track and Trace Dashboard consolidates the wealth of data collected (from
+master data to events) into actionable information. Users like supply chain managers,
+warehouse operators, or even customers (if given access) can quickly find answers to
+“Where is my product? Has it been shipped? Who has it now? Did it face any issues?” all
+by looking at this dashboard. The Shampoo Bottle 100ML example would allow tracing any
+single bottle or batch from manufacturing through distribution to the store shelf, ensuring
+transparency and quick identification of any bottleneck or issue in the supply chain.
+Throughout the solution, consistency in terminology and data is maintained – the IDs
+defined in master data flow through to labels/tags, which flow through to inventory records
+and events, and finally surface on the dashboard. This ensures that, for example, the
+carton ID a user sees on the dashboard is exactly the one that was printed on the label and
+scanned in the warehouse. The end result is a robust Asset Track and Trace system that
+handles everything from defining a product to monitoring its journey to the end consumer.

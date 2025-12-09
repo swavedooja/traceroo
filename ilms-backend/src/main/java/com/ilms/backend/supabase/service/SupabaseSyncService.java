@@ -23,7 +23,10 @@ public class SupabaseSyncService {
     private static final Logger logger = LoggerFactory.getLogger(SupabaseSyncService.class);
 
     @Autowired
-    private MaterialMasterRepository sqliteMaterialMasterRepository;
+    private MaterialRepository sqliteMaterialRepository; // Updated
+
+    @Autowired
+    private SupabaseMaterialRepository supabaseMaterialRepository; // Updated
 
     @Autowired
     private HandlingParameterRepository sqliteHandlingParameterRepository;
@@ -42,9 +45,6 @@ public class SupabaseSyncService {
 
     @Autowired
     private InventoryRepository sqliteInventoryRepository;
-
-    @Autowired
-    private SupabaseMaterialMasterRepository supabaseMaterialMasterRepository;
 
     @Autowired
     private SupabaseHandlingParameterRepository supabaseHandlingParameterRepository;
@@ -70,12 +70,11 @@ public class SupabaseSyncService {
         syncDataToSupabase();
     }
 
-    // Sync all data from SQLite to Supabase
-    @Scheduled(fixedRate = 60000) // Run every 1 minute
+    @Scheduled(fixedRate = 60000)
     public void syncDataToSupabase() {
         logger.info("Starting sync to Supabase...");
         try {
-            syncMaterialMasterData();
+            syncMaterials();
             syncHandlingParameterData();
             syncMaterialImageData();
             syncMaterialDocumentData();
@@ -88,229 +87,179 @@ public class SupabaseSyncService {
         }
     }
 
-    private void syncMaterialMasterData() {
-        List<MaterialMaster> sqliteMaterials = sqliteMaterialMasterRepository.findAll();
+    private void syncMaterials() {
+        List<Material> sqliteMaterials = sqliteMaterialRepository.findAll();
 
-        for (MaterialMaster sqliteMaterial : sqliteMaterials) {
-            Optional<SupabaseMaterialMaster> existingSupabaseMaterial = supabaseMaterialMasterRepository
-                    .findById(sqliteMaterial.getMaterialCode());
-
-            SupabaseMaterialMaster supabaseMaterial;
-            if (existingSupabaseMaterial.isPresent()) {
-                supabaseMaterial = existingSupabaseMaterial.get();
+        for (Material m : sqliteMaterials) {
+            Optional<SupabaseMaterial> existing = supabaseMaterialRepository.findByCode(m.getCode());
+            SupabaseMaterial sm;
+            if (existing.isPresent()) {
+                sm = existing.get();
+                // Ensure ID assumes existing if needed, or if ID is different? Material uses
+                // UUID now.
+                // Assuming ID sync is handled by code lookup or we just update fields.
             } else {
-                supabaseMaterial = new SupabaseMaterialMaster();
-                supabaseMaterial.setMaterialCode(sqliteMaterial.getMaterialCode());
+                sm = new SupabaseMaterial();
+                sm.setCode(m.getCode());
+                sm.setId(m.getId()); // Sync ID
             }
 
-            // Copy all fields
-            supabaseMaterial.setMaterialName(sqliteMaterial.getMaterialName());
-            supabaseMaterial.setDescription(sqliteMaterial.getDescription());
-            supabaseMaterial.setSku(sqliteMaterial.getSku());
-            supabaseMaterial.setEanGtIN(sqliteMaterial.getEanGtIN());
-            supabaseMaterial.setUpc(sqliteMaterial.getUpc());
-            supabaseMaterial.setCountryOfOrigin(sqliteMaterial.getCountryOfOrigin());
-            supabaseMaterial.setType(sqliteMaterial.getType());
-            supabaseMaterial.setMaterialClass(sqliteMaterial.getMaterialClass());
-            supabaseMaterial.setMaterialGroup(sqliteMaterial.getMaterialGroup());
-            supabaseMaterial.setGs1CategoryCode(sqliteMaterial.getGs1CategoryCode());
-            supabaseMaterial.setShelfLifeDays(sqliteMaterial.getShelfLifeDays());
-            supabaseMaterial.setStorageType(sqliteMaterial.getStorageType());
-            supabaseMaterial.setProcurementType(sqliteMaterial.getProcurementType());
-            supabaseMaterial.setBaseUOM(sqliteMaterial.getBaseUOM());
-            supabaseMaterial.setNetWeightKg(sqliteMaterial.getNetWeightKg());
-            supabaseMaterial.setDimensionsMM(sqliteMaterial.getDimensionsMM());
-            supabaseMaterial.setTradeUOM(sqliteMaterial.getTradeUOM());
-            supabaseMaterial.setTradeWeightKg(sqliteMaterial.getTradeWeightKg());
-            supabaseMaterial.setTradeDimensionsMM(sqliteMaterial.getTradeDimensionsMM());
-            supabaseMaterial.setPackaged(sqliteMaterial.getIsPackaged());
-            supabaseMaterial.setFragile(sqliteMaterial.getIsFragile());
-            supabaseMaterial.setEnvSensitive(sqliteMaterial.getIsEnvSensitive());
-            supabaseMaterial.setHighValue(sqliteMaterial.getIsHighValue());
-            supabaseMaterial.setBatchManaged(sqliteMaterial.getIsBatchManaged());
-            supabaseMaterial.setPackagingMaterialCode(sqliteMaterial.getPackagingMaterialCode());
-            supabaseMaterial.setSerialized(sqliteMaterial.getIsSerialized());
-            supabaseMaterial.setExternalERPCode(sqliteMaterial.getExternalERPCode());
-            supabaseMaterial.setItemWeight(sqliteMaterial.getItemWeight());
-            supabaseMaterial.setItemDimension(sqliteMaterial.getItemDimension());
-            supabaseMaterial.setMaxStoragePeriod(sqliteMaterial.getMaxStoragePeriod());
-            supabaseMaterial.setMaterialEANupc(sqliteMaterial.getMaterialEANupc());
+            sm.setName(m.getName());
+            sm.setDescription(m.getDescription());
+            sm.setType(m.getType());
+            sm.setCategory(m.getCategory());
+            sm.setStatus(m.getStatus());
+            sm.setBaseUom(m.getBaseUom());
+            sm.setIsBatchManaged(m.getIsBatchManaged());
+            sm.setIsSerialManaged(m.getIsSerialManaged());
+            sm.setShelfLifeDays(m.getShelfLifeDays());
+            sm.setMinStock(m.getMinStock());
+            sm.setMaxStock(m.getMaxStock());
+            sm.setGrossWeight(m.getGrossWeight());
+            sm.setNetWeight(m.getNetWeight());
+            sm.setWeightUom(m.getWeightUom());
+            sm.setLength(m.getLength());
+            sm.setWidth(m.getWidth());
+            sm.setHeight(m.getHeight());
+            sm.setDimensionUom(m.getDimensionUom());
+            sm.setVolume(m.getVolume());
+            sm.setVolumeUom(m.getVolumeUom());
+            sm.setIsHazmat(m.getIsHazmat());
+            sm.setHazmatClass(m.getHazmatClass());
+            sm.setUnNumber(m.getUnNumber());
+            sm.setCreatedAt(m.getCreatedAt());
+            sm.setUpdatedAt(m.getUpdatedAt());
 
-            supabaseMaterialMasterRepository.save(supabaseMaterial);
+            supabaseMaterialRepository.save(sm);
         }
     }
 
     private void syncHandlingParameterData() {
-        List<HandlingParameter> sqliteParams = sqliteHandlingParameterRepository.findAll();
+        List<HandlingParameter> params = sqliteHandlingParameterRepository.findAll();
+        for (HandlingParameter p : params) {
+            if (p.getMaterial() == null)
+                continue;
+            // Lookup by material code
+            Optional<SupabaseHandlingParameter> existing = supabaseHandlingParameterRepository
+                    .findByMaterialCode(p.getMaterial().getCode()); // Use getCode()
 
-        for (HandlingParameter sqliteParam : sqliteParams) {
-            // FIX: Look up by materialCode instead of ID to avoid unique constraint
-            // violations
-            Optional<SupabaseHandlingParameter> existingSupabaseParam = supabaseHandlingParameterRepository
-                    .findByMaterialCode(sqliteParam.getMaterial().getMaterialCode());
-
-            SupabaseHandlingParameter supabaseParam;
-            if (existingSupabaseParam.isPresent()) {
-                supabaseParam = existingSupabaseParam.get();
+            SupabaseHandlingParameter sp;
+            if (existing.isPresent()) {
+                sp = existing.get();
             } else {
-                supabaseParam = new SupabaseHandlingParameter();
+                sp = new SupabaseHandlingParameter();
+                sp.setMaterialCode(p.getMaterial().getCode());
             }
 
-            // Copy all fields
-            supabaseParam.setMaterialCode(sqliteParam.getMaterial().getMaterialCode());
-            supabaseParam.setTemperatureMin(sqliteParam.getTemperatureMin());
-            supabaseParam.setTemperatureMax(sqliteParam.getTemperatureMax());
-            supabaseParam.setHumidityMin(sqliteParam.getHumidityMin());
-            supabaseParam.setHumidityMax(sqliteParam.getHumidityMax());
-            supabaseParam.setHazardousClass(sqliteParam.getHazardousClass());
-            supabaseParam.setPrecautions(sqliteParam.getPrecautions());
-            supabaseParam.setEnvParameters(sqliteParam.getEnvParameters());
-            supabaseParam.setEpcFormat(sqliteParam.getEpcFormat());
+            sp.setTemperatureMin(p.getTemperatureMin());
+            sp.setTemperatureMax(p.getTemperatureMax());
+            sp.setHumidityMin(p.getHumidityMin());
+            sp.setHumidityMax(p.getHumidityMax());
+            sp.setHazardousClass(p.getHazardousClass());
+            sp.setPrecautions(p.getPrecautions());
+            sp.setEnvParameters(p.getEnvParameters());
+            sp.setEpcFormat(p.getEpcFormat());
 
-            supabaseHandlingParameterRepository.save(supabaseParam);
+            supabaseHandlingParameterRepository.save(sp);
         }
     }
 
     private void syncMaterialImageData() {
-        List<MaterialImage> sqliteImages = sqliteMaterialImageRepository.findAll();
+        List<MaterialImage> images = sqliteMaterialImageRepository.findAll();
+        for (MaterialImage img : images) {
+            if (img.getMaterial() == null)
+                continue;
+            Optional<SupabaseMaterialImage> existing = supabaseMaterialImageRepository.findById(img.getId());
+            SupabaseMaterialImage sImg = existing.orElse(new SupabaseMaterialImage());
 
-        for (MaterialImage sqliteImage : sqliteImages) {
-            Optional<SupabaseMaterialImage> existingSupabaseImage = supabaseMaterialImageRepository
-                    .findById(sqliteImage.getId());
-
-            SupabaseMaterialImage supabaseImage;
-            if (existingSupabaseImage.isPresent()) {
-                supabaseImage = existingSupabaseImage.get();
-            } else {
-                supabaseImage = new SupabaseMaterialImage();
-            }
-
-            // Copy all fields
-            supabaseImage.setMaterialCode(sqliteImage.getMaterial().getMaterialCode());
-            supabaseImage.setType(sqliteImage.getType());
-            supabaseImage.setFilename(sqliteImage.getFilename());
-            supabaseImage.setUrl(sqliteImage.getUrl());
-
-            supabaseMaterialImageRepository.save(supabaseImage);
+            sImg.setMaterialCode(img.getMaterial().getCode()); // Use getCode()
+            sImg.setType(img.getType());
+            sImg.setFilename(img.getFilename());
+            sImg.setUrl(img.getUrl());
+            supabaseMaterialImageRepository.save(sImg);
         }
     }
 
     private void syncMaterialDocumentData() {
-        List<MaterialDocument> sqliteDocs = sqliteMaterialDocumentRepository.findAll();
+        List<MaterialDocument> docs = sqliteMaterialDocumentRepository.findAll();
+        for (MaterialDocument doc : docs) {
+            if (doc.getMaterial() == null)
+                continue;
+            Optional<SupabaseMaterialDocument> existing = supabaseMaterialDocumentRepository.findById(doc.getId());
+            SupabaseMaterialDocument sDoc = existing.orElse(new SupabaseMaterialDocument());
 
-        for (MaterialDocument sqliteDoc : sqliteDocs) {
-            Optional<SupabaseMaterialDocument> existingSupabaseDoc = supabaseMaterialDocumentRepository
-                    .findById(sqliteDoc.getId());
-
-            SupabaseMaterialDocument supabaseDoc;
-            if (existingSupabaseDoc.isPresent()) {
-                supabaseDoc = existingSupabaseDoc.get();
-            } else {
-                supabaseDoc = new SupabaseMaterialDocument();
-            }
-
-            // Copy all fields
-            supabaseDoc.setMaterialCode(sqliteDoc.getMaterial().getMaterialCode());
-            supabaseDoc.setDocType(sqliteDoc.getDocType());
-            supabaseDoc.setFilename(sqliteDoc.getFilename());
-            supabaseDoc.setUrl(sqliteDoc.getUrl());
-
-            supabaseMaterialDocumentRepository.save(supabaseDoc);
+            sDoc.setMaterialCode(doc.getMaterial().getCode()); // Use getCode()
+            sDoc.setDocType(doc.getDocType());
+            sDoc.setFilename(doc.getFilename());
+            sDoc.setUrl(doc.getUrl());
+            supabaseMaterialDocumentRepository.save(sDoc);
         }
     }
 
+    // ... Other sync methods (PackagingHierarchy, PackagingLevel) remain largely
+    // same unless they linked to Material
+    // PackagingLevel might link to LabelTemplate which links to Material, but sync
+    // logic for PackagingLevel doesn't traverse deep usually.
+
     private void syncPackagingHierarchyData() {
-        List<PackagingHierarchy> sqliteHierarchies = sqlitePackagingHierarchyRepository.findAll();
-
-        for (PackagingHierarchy sqliteHierarchy : sqliteHierarchies) {
-            Optional<SupabasePackagingHierarchy> existingSupabaseHierarchy = supabasePackagingHierarchyRepository
-                    .findById(sqliteHierarchy.getId());
-
-            SupabasePackagingHierarchy supabaseHierarchy;
-            if (existingSupabaseHierarchy.isPresent()) {
-                supabaseHierarchy = existingSupabaseHierarchy.get();
-            } else {
-                supabaseHierarchy = new SupabasePackagingHierarchy();
-            }
-
-            // Copy all fields
-            supabaseHierarchy.setName(sqliteHierarchy.getName());
-            supabaseHierarchy.setActivationFrom(sqliteHierarchy.getActivationFrom());
-            supabaseHierarchy.setActivationTo(sqliteHierarchy.getActivationTo());
-            supabaseHierarchy.setPackagingCapacityConstraints(sqliteHierarchy.getPackagingCapacityConstraints());
-            supabaseHierarchy.setGtinAssignmentFormat(sqliteHierarchy.getGtinAssignmentFormat());
-            supabaseHierarchy.setDescription(sqliteHierarchy.getDescription());
-
-            supabasePackagingHierarchyRepository.save(supabaseHierarchy);
+        List<PackagingHierarchy> items = sqlitePackagingHierarchyRepository.findAll();
+        for (PackagingHierarchy item : items) {
+            SupabasePackagingHierarchy sItem = supabasePackagingHierarchyRepository.findById(item.getId())
+                    .orElse(new SupabasePackagingHierarchy());
+            sItem.setName(item.getName());
+            sItem.setActivationFrom(item.getActivationFrom());
+            sItem.setActivationTo(item.getActivationTo());
+            sItem.setPackagingCapacityConstraints(item.getPackagingCapacityConstraints());
+            sItem.setGtinAssignmentFormat(item.getGtinAssignmentFormat());
+            sItem.setDescription(item.getDescription());
+            supabasePackagingHierarchyRepository.save(sItem);
         }
     }
 
     private void syncPackagingLevelData() {
-        List<PackagingLevel> sqliteLevels = sqlitePackagingLevelRepository.findAll();
-
-        for (PackagingLevel sqliteLevel : sqliteLevels) {
-            Optional<SupabasePackagingLevel> existingSupabaseLevel = supabasePackagingLevelRepository
-                    .findById(sqliteLevel.getId());
-
-            SupabasePackagingLevel supabaseLevel;
-            if (existingSupabaseLevel.isPresent()) {
-                supabaseLevel = existingSupabaseLevel.get();
-            } else {
-                supabaseLevel = new SupabasePackagingLevel();
-            }
-
-            // Copy all fields
-            supabaseLevel.setHierarchyId(sqliteLevel.getHierarchy().getId());
-            supabaseLevel.setLevelIndex(sqliteLevel.getLevelIndex());
-            supabaseLevel.setLevelCode(sqliteLevel.getLevelCode());
-            supabaseLevel.setLevelName(sqliteLevel.getLevelName());
-            supabaseLevel.setContainedQuantity(sqliteLevel.getContainedQuantity());
-            supabaseLevel.setDimensionsMM(sqliteLevel.getDimensionsMM());
-            supabaseLevel.setWeightKg(sqliteLevel.getWeightKg());
-            supabaseLevel.setCapacityUnits(sqliteLevel.getCapacityUnits());
-            supabaseLevel.setIdTech(sqliteLevel.getIdTech());
-            supabaseLevel.setBarcodeType(sqliteLevel.getBarcodeType());
-            supabaseLevel.setRfidTagType(sqliteLevel.getRfidTagType());
-            supabaseLevel.setEpcFormat(sqliteLevel.getEpcFormat());
-            supabaseLevel.setLabelTemplate(sqliteLevel.getLabelTemplate());
-            supabaseLevel.setGtinFormat(sqliteLevel.getGtinFormat());
-            supabaseLevel.setDefaultLabelCopies(sqliteLevel.getDefaultLabelCopies());
-            supabaseLevel.setReturnable(sqliteLevel.getIsReturnable());
-            supabaseLevel.setSerialized(sqliteLevel.getIsSerialized());
-
-            supabasePackagingLevelRepository.save(supabaseLevel);
+        List<PackagingLevel> items = sqlitePackagingLevelRepository.findAll();
+        for (PackagingLevel item : items) {
+            SupabasePackagingLevel sItem = supabasePackagingLevelRepository.findById(item.getId())
+                    .orElse(new SupabasePackagingLevel());
+            if (item.getHierarchy() != null)
+                sItem.setHierarchyId(item.getHierarchy().getId());
+            sItem.setLevelIndex(item.getLevelIndex());
+            sItem.setLevelCode(item.getLevelCode());
+            sItem.setLevelName(item.getLevelName());
+            sItem.setContainedQuantity(item.getContainedQuantity());
+            sItem.setDimensionsMM(item.getDimensionsMM());
+            sItem.setWeightKg(item.getWeightKg());
+            sItem.setCapacityUnits(item.getCapacityUnits());
+            sItem.setIdTech(item.getIdTech());
+            sItem.setBarcodeType(item.getBarcodeType());
+            sItem.setRfidTagType(item.getRfidTagType());
+            sItem.setEpcFormat(item.getEpcFormat());
+            // Label Template? sItem.setLabelTemplate(item.getLabelTemplate());
+            sItem.setGtinFormat(item.getGtinFormat());
+            sItem.setDefaultLabelCopies(item.getDefaultLabelCopies());
+            sItem.setReturnable(item.getIsReturnable());
+            sItem.setSerialized(item.getIsSerialized());
+            supabasePackagingLevelRepository.save(sItem);
         }
     }
 
     private void syncInventoryData() {
-        List<Inventory> sqliteInventoryList = sqliteInventoryRepository.findAll();
+        List<Inventory> invList = sqliteInventoryRepository.findAll();
+        for (Inventory inv : invList) {
+            SupabaseInventory sInv = supabaseInventoryRepository.findById(inv.getId()).orElse(new SupabaseInventory());
+            if (inv.getId() != null)
+                sInv.setId(inv.getId());
 
-        for (Inventory sqliteInv : sqliteInventoryList) {
-            Optional<SupabaseInventory> existingSupabaseInv = supabaseInventoryRepository
-                    .findById(sqliteInv.getId());
-
-            SupabaseInventory supabaseInv;
-            if (existingSupabaseInv.isPresent()) {
-                supabaseInv = existingSupabaseInv.get();
-            } else {
-                supabaseInv = new SupabaseInventory();
-                supabaseInv.setId(sqliteInv.getId());
+            if (inv.getMaterial() != null)
+                sInv.setMaterialCode(inv.getMaterial().getCode()); // Use getCode()
+            sInv.setSerialNumber(inv.getSerialNumber());
+            sInv.setBatchNumber(inv.getBatchNumber());
+            sInv.setStatus(inv.getStatus());
+            if (inv.getLocation() != null) {
+                sInv.setLocationCode(inv.getLocation().getCode());
             }
-
-            // Copy fields
-            supabaseInv.setMaterialCode(sqliteInv.getMaterial().getMaterialCode());
-            supabaseInv.setSerialNumber(sqliteInv.getSerialNumber());
-            supabaseInv.setBatchNumber(sqliteInv.getBatchNumber());
-            supabaseInv.setStatus(sqliteInv.getStatus());
-            if (sqliteInv.getWarehouse() != null) {
-                supabaseInv.setWarehouseCode(sqliteInv.getWarehouse().getWarehouseCode());
-            }
-            if (sqliteInv.getLocation() != null) {
-                supabaseInv.setLocationId(sqliteInv.getLocation().getId());
-            }
-            supabaseInv.setCreatedAt(sqliteInv.getCreatedAt());
-
-            supabaseInventoryRepository.save(supabaseInv);
+            sInv.setCreatedAt(inv.getCreatedAt());
+            supabaseInventoryRepository.save(sInv);
         }
     }
 }

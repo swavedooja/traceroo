@@ -32,11 +32,16 @@ import MasterDefinitions from './components/MasterDefinitions'; // Added import
 import LabelDashboard from './components/LabelManagement/LabelDashboard'; // Restored Import
 import PrintStation from './components/LabelManagement/Print/PrintStation'; // Add import
 import PackingDashboard from './components/Packing/PackingDashboard';
+import AggregationStation from './components/Packing/AggregationStation';
 
 import Registration from './components/Inventory/Registration';
+import SerialGeneration from './components/Inventory/SerialGeneration';
+import InventoryScanConfirm from './components/Inventory/InventoryScanConfirm';
 import PackingStation from './components/Inventory/PackingStation';
 import SearchPortal from './components/Trace/SearchPortal';
 import Dashboard from './components/Dashboard';
+import DashboardMetrics from './components/Dashboard/DashboardMetrics';
+import ShipmentCreate from './components/Shipping/ShipmentCreate';
 import Login from './components/Login';
 import Footer from './components/Footer';
 import {
@@ -52,8 +57,9 @@ import {
   Style,
   QrCodeScanner,
   Timeline,
-  ListAlt, // Added icon
-  Storage // Added icon
+  ListAlt,
+  Storage,
+  Archive
 } from '@mui/icons-material';
 
 const AnimatedBox = motion(Box);
@@ -63,21 +69,50 @@ function NavBar({ onLogout }) {
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  const [masterDataOpen, setMasterDataOpen] = useState(false); // Default closed
+  const [inventoryOpen, setInventoryOpen] = useState(false);
 
   const menuItems = [
-    { label: 'Dashboard', icon: DashboardIcon, path: '/' },
+    {
+      label: 'Dashboard',
+      icon: DashboardIcon,
+      stateKey: 'dashboardOpen',
+      children: [
+        { label: 'Home', icon: DashboardIcon, path: '/' },
+        { label: 'Operations', icon: Timeline, path: '/dashboard/operations' },
+      ]
+    },
     {
       label: 'Master Data',
       icon: Storage,
+      stateKey: 'masterDataOpen',
       children: [
         { label: 'Materials', icon: Inventory2, path: '/materials' },
         { label: 'Locations', icon: Store, path: '/locations' },
         { label: 'Definitions', icon: ListAlt, path: '/master-definitions' },
       ]
     },
+    {
+      label: 'Inventory',
+      icon: Inventory2,
+      stateKey: 'inventoryOpen',
+      children: [
+        { label: 'Generate Serials', icon: QrCodeScanner, path: '/inventory/serials' },
+        { label: 'Scan Confirmation', icon: QrCodeScanner, path: '/inventory/scan' },
+        { label: 'Registration', icon: Inventory2, path: '/inventory/register' },
+      ]
+    },
     { label: 'Label Management', icon: Style, path: '/labels' },
-    { label: 'Packing Station', icon: QrCodeScanner, path: '/packing' }, // Added Packing
+    {
+      label: 'Packing',
+      icon: Archive,
+      stateKey: 'packingOpen',
+      children: [
+        { label: 'Aggregation Station', icon: QrCodeScanner, path: '/packing/aggregation' },
+        { label: 'Packing Dashboard', icon: Inventory2, path: '/packing' },
+      ]
+    },
+    { label: 'Shipping', icon: LocalShipping, path: '/shipping' },
+    { label: 'Track & Trace', icon: Timeline, path: '/trace' },
   ];
 
   const handleProfileClick = (event) => {
@@ -88,16 +123,23 @@ function NavBar({ onLogout }) {
     setAnchorEl(null);
   };
 
+  const [expandedMenus, setExpandedMenus] = useState({});
+
+  const toggleMenu = (key) => {
+    setExpandedMenus(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const renderMenuItem = (item, index) => {
     if (item.children) {
+      const isOpen = expandedMenus[item.label] || false;
       return (
         <React.Fragment key={item.label}>
-          <ListItemButton onClick={() => setMasterDataOpen(!masterDataOpen)} sx={{ borderRadius: 2, mb: 1, color: 'white' }}>
+          <ListItemButton onClick={() => toggleMenu(item.label)} sx={{ borderRadius: 2, mb: 1, color: 'white' }}>
             <ListItemIcon sx={{ color: 'white', minWidth: 40 }}><item.icon /></ListItemIcon>
             <ListItemText primary={item.label} />
-            {masterDataOpen ? <ExpandLess /> : <ExpandMore />}
+            {isOpen ? <ExpandLess /> : <ExpandMore />}
           </ListItemButton>
-          <Collapse in={masterDataOpen} timeout="auto" unmountOnExit>
+          <Collapse in={isOpen} timeout="auto" unmountOnExit>
             <List component="div" disablePadding>
               {item.children.map((child, cIndex) => (
                 <ListItemButton
@@ -220,6 +262,7 @@ export default function App() {
       <Container maxWidth="xl" sx={{ mt: { xs: 2, sm: 3 }, mb: { xs: 3, sm: 6 }, flex: 1, display: 'flex', flexDirection: 'column', px: { xs: 1, sm: 2, md: 3 } }}>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard/operations" element={<DashboardMetrics />} />
           <Route path="/materials/new" element={<MaterialCreate />} />
           <Route path="/materials/:code" element={<MaterialForm />} />
           <Route path="/materials" element={<MaterialList />} />
@@ -231,8 +274,12 @@ export default function App() {
           <Route path="/label-templates/*" element={<LabelDashboard />} />
           <Route path="/print/:hierarchyId" element={<PrintStation />} />
           <Route path="/inventory/register" element={<Registration />} />
+          <Route path="/inventory/serials" element={<SerialGeneration />} />
+          <Route path="/inventory/scan" element={<InventoryScanConfirm />} />
           <Route path="/inventory/packing" element={<PackingStation />} />
           <Route path="/packing" element={<PackingDashboard />} />
+          <Route path="/packing/aggregation" element={<AggregationStation />} />
+          <Route path="/shipping" element={<ShipmentCreate />} />
           <Route path="/trace" element={<SearchPortal />} />
         </Routes>
       </Container>

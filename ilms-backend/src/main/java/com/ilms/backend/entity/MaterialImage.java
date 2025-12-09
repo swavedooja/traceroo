@@ -14,8 +14,8 @@ public class MaterialImage {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "material_code", referencedColumnName = "material_code")
-    private MaterialMaster material;
+    @JoinColumn(name = "material_id")
+    private Material material;
 
     private String type; // material | trade
     private String filename;

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -18,8 +18,13 @@ import {
   Stepper,
   Step,
   StepLabel,
+  IconButton,
+  Card,
+  CardMedia,
+  CardActions,
+  Tooltip,
 } from '@mui/material';
-import { AutoFixHigh } from '@mui/icons-material';
+import { AutoFixHigh, CloudUpload, Delete, Image as ImageIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { MaterialsAPI } from '../services/APIService';
 import MaterialDetailCard from './MaterialDetailCard';
@@ -31,10 +36,13 @@ const GROUPS = ['Latitude Laptops', '100 ML Shampoo Bottles', 'Default Group'];
 const STORAGE_TYPES = ['Ambient', 'Cool Storage', 'Cold Storage'];
 const PROCUREMENT_TYPES = ['Make To Stock', 'Make To Order', 'Purchase'];
 const UOMS = ['EA', 'KG', 'LT', 'TON'];
+const STEPS = ['General', 'Dimensions & Weight', 'Storage & Handling', 'Identifiers', 'Images', 'Flags', 'Review & Submit'];
 
 export default function MaterialCreate() {
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
   const [activeStep, setActiveStep] = useState(0);
+  const [images, setImages] = useState([]); // Array of { name, dataUrl, isPrimary }
   const [form, setForm] = useState({
     materialCode: '',
     materialName: '',
@@ -83,6 +91,42 @@ export default function MaterialCreate() {
   };
   const onHP = (field) => (e) => {
     setForm((f) => ({ ...f, handlingParameter: { ...(f.handlingParameter || {}), [field]: e.target.value } }));
+  };
+
+  // Image handling functions
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+    files.forEach(file => {
+      if (!file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        setImages(prev => [...prev, {
+          name: file.name,
+          dataUrl: evt.target.result,
+          isPrimary: prev.length === 0 // First image is primary
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = ''; // Reset input
+  };
+
+  const removeImage = (index) => {
+    setImages(prev => {
+      const updated = prev.filter((_, i) => i !== index);
+      // If we removed the primary image, make the first remaining image primary
+      if (prev[index]?.isPrimary && updated.length > 0) {
+        updated[0].isPrimary = true;
+      }
+      return updated;
+    });
+  };
+
+  const setPrimaryImage = (index) => {
+    setImages(prev => prev.map((img, i) => ({
+      ...img,
+      isPrimary: i === index
+    })));
   };
 
   const handleAutoFill = () => {
@@ -148,9 +192,11 @@ export default function MaterialCreate() {
         return true;
       case 3:
         return true;
-      case 4:
+      case 4: // Images - optional
         return true;
-      case 5:
+      case 5: // Flags
+        return true;
+      case 6: // Review
         return valid;
       default:
         return true;
@@ -226,7 +272,7 @@ export default function MaterialCreate() {
       </Box>
 
       <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 3 }}>
-        {['General', 'Dimensions & Weight', 'Storage & Handling', 'Identifiers', 'Flags', 'Review & Submit'].map(label => (
+        {STEPS.map(label => (
           <Step key={label}><StepLabel>{label}</StepLabel></Step>
         ))}
       </Stepper>
@@ -295,6 +341,96 @@ export default function MaterialCreate() {
 
       {activeStep === 4 && (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+            <ImageIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+            Product Images
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Upload images of the material. The first image will be set as the primary image.
+          </Typography>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            hidden
+            accept="image/*"
+            multiple
+            onChange={handleImageUpload}
+          />
+
+          <Button
+            variant="outlined"
+            startIcon={<CloudUpload />}
+            onClick={() => fileInputRef.current?.click()}
+            sx={{ mb: 2 }}
+          >
+            Upload Images
+          </Button>
+
+          {images.length > 0 ? (
+            <Grid container spacing={2}>
+              {images.map((img, index) => (
+                <Grid item xs={6} sm={4} md={3} key={index}>
+                  <Card variant="outlined" sx={{ position: 'relative' }}>
+                    {img.isPrimary && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          left: 8,
+                          bgcolor: 'primary.main',
+                          color: 'white',
+                          px: 1,
+                          py: 0.25,
+                          borderRadius: 1,
+                          fontSize: '0.7rem',
+                          fontWeight: 'bold',
+                          zIndex: 1
+                        }}
+                      >
+                        PRIMARY
+                      </Box>
+                    )}
+                    <CardMedia
+                      component="img"
+                      height="120"
+                      image={img.dataUrl}
+                      alt={img.name}
+                      sx={{ objectFit: 'cover' }}
+                    />
+                    <CardActions sx={{ justifyContent: 'space-between', py: 0.5 }}>
+                      <Tooltip title="Set as primary">
+                        <IconButton
+                          size="small"
+                          onClick={() => setPrimaryImage(index)}
+                          disabled={img.isPrimary}
+                          color={img.isPrimary ? 'primary' : 'default'}
+                        >
+                          <ImageIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Remove">
+                        <IconButton
+                          size="small"
+                          onClick={() => removeImage(index)}
+                          color="error"
+                        >
+                          <Delete fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </CardActions>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <Alert severity="info">No images uploaded. You can add images or skip this step.</Alert>
+          )}
+        </Paper>
+      )}
+
+      {activeStep === 5 && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Flags</Typography>
           <Grid container>
             <Grid item xs={12}>
@@ -309,20 +445,20 @@ export default function MaterialCreate() {
         </Paper>
       )}
 
-      {activeStep === 5 && (
+      {activeStep === 6 && (
         <Paper variant="outlined" sx={{ p: 2, mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>Review</Typography>
-          <MaterialDetailCard material={form} images={[]} />
+          <MaterialDetailCard material={form} images={images.map(i => i.dataUrl)} />
         </Paper>
       )}
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
         <Button disabled={activeStep === 0} onClick={() => setActiveStep(s => Math.max(0, s - 1))}>Back</Button>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          {activeStep < 5 && (
+          {activeStep < 6 && (
             <Button variant="contained" onClick={() => setActiveStep(s => s + 1)} disabled={!stepValid}>Next</Button>
           )}
-          {activeStep === 5 && (
+          {activeStep === 6 && (
             <>
               <Button variant="outlined" onClick={() => setPreviewOpen(true)} disabled={!valid}>Preview</Button>
               <Button variant="contained" onClick={submit} disabled={!valid || saving}>{saving ? 'Saving...' : 'Submit'}</Button>
@@ -334,7 +470,7 @@ export default function MaterialCreate() {
       <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="lg" fullWidth>
         <DialogTitle>Preview</DialogTitle>
         <DialogContent>
-          <MaterialDetailCard material={form} images={[]} />
+          <MaterialDetailCard material={form} images={images.map(i => i.dataUrl)} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPreviewOpen(false)}>Close</Button>

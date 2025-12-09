@@ -15,8 +15,8 @@ public class Inventory {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "material_code", nullable = false)
-    private MaterialMaster material;
+    @JoinColumn(name = "material_id", nullable = false)
+    private Material material;
 
     @Column(name = "serial_number", unique = true)
     private String serialNumber;
@@ -27,12 +27,8 @@ public class Inventory {
     private String status; // REGISTERED, PACKED, SHIPPED, CONSUMED
 
     @ManyToOne
-    @JoinColumn(name = "warehouse_code")
-    private Warehouse warehouse;
-
-    @ManyToOne
     @JoinColumn(name = "location_id")
-    private StorageLocation location;
+    private Location location;
 
     @ManyToOne
     @JoinColumn(name = "box_id")

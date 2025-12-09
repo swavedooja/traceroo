@@ -24,11 +24,8 @@ public class SupabaseInventory {
 
     private String status;
 
-    @Column(name = "warehouse_code")
-    private String warehouseCode;
-
-    @Column(name = "location_id")
-    private Long locationId;
+    @Column(name = "location_code")
+    private String locationCode;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

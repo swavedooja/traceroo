@@ -14,8 +14,8 @@ public class HandlingParameter {
     private Long id;
 
     @OneToOne
-    @JoinColumn(name = "material_code", referencedColumnName = "material_code")
-    private MaterialMaster material;
+    @JoinColumn(name = "material_id")
+    private Material material;
 
     private Double temperatureMin;
     private Double temperatureMax;
