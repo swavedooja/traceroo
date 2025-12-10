@@ -30,7 +30,7 @@ export default function Footer() {
   ];
 
   const resources = [
-    
+
   ];
 
   const socialLinks = [
@@ -125,7 +125,7 @@ export default function Footer() {
                   </Typography>
                 </Stack>
                 <Typography variant="body2" sx={{ opacity: 0.8, lineHeight: 1.7 }}>
-                 Track and Trace solution providing cutting-edge solutions for
+                  Track and Trace solution providing cutting-edge solutions for
                   modern supply chain operations.
                 </Typography>
                 <Stack direction="row" spacing={1}>
@@ -272,7 +272,7 @@ export default function Footer() {
             spacing={2}
           >
             <Typography variant="body2" sx={{ opacity: 0.7 }}>
-              © {new Date().getFullYear()} TraceRoo. All rights reserved. Powered by DOPS
+              © {new Date().getFullYear()} TraceRoo. All rights reserved. Powered by DOPS | Last Updated: Dec 11, 2025, 04:55 IST
             </Typography>
             <Stack direction="row" spacing={3}>
               <Link
